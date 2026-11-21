@@ -731,36 +731,36 @@ class _HomePlayerScreenState extends State<HomePlayerScreen> with SingleTickerPr
 
     return Column(
       children: [
-        // Action Bar: Scan Device, Pick Files, Add Folder
-        Padding(
+        // Action Bar: Scan Device, Pick Files, Add Folder (Horizontally Scrollable)
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          physics: const BouncingScrollPhysics(),
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 4),
           child: Row(
             children: [
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: isScanning
-                      ? null
-                      : () async {
-                          final count = await AudioPlayerService.instance.scanDeviceMusicDirectory();
-                          _showScanResultSnackbar(count, 'Device Storage Scan');
-                        },
-                  icon: isScanning
-                      ? const SizedBox(
-                          width: 14,
-                          height: 14,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                        )
-                      : const Icon(Icons.phonelink_ring_rounded, size: 16),
-                  label: Text(
-                    isScanning ? 'Scanning...' : 'Scan Device Songs',
-                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.neonCyan.withAlpha(45),
-                    foregroundColor: AppTheme.neonCyan,
-                    side: BorderSide(color: AppTheme.neonCyan.withAlpha(100)),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  ),
+              ElevatedButton.icon(
+                onPressed: isScanning
+                    ? null
+                    : () async {
+                        final count = await AudioPlayerService.instance.scanDeviceMusicDirectory();
+                        _showScanResultSnackbar(count, 'Device Storage Scan');
+                      },
+                icon: isScanning
+                    ? const SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      )
+                    : const Icon(Icons.phonelink_ring_rounded, size: 15),
+                label: Text(
+                  isScanning ? 'Scanning...' : 'Scan Device Songs',
+                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.neonCyan.withAlpha(45),
+                  foregroundColor: AppTheme.neonCyan,
+                  side: BorderSide(color: AppTheme.neonCyan.withAlpha(100)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 ),
               ),
               const SizedBox(width: 8),
@@ -830,8 +830,10 @@ class _HomePlayerScreenState extends State<HomePlayerScreen> with SingleTickerPr
           ),
         ),
 
-        // Filter Chips (All, Device Audio, Bundled)
-        Padding(
+        // Filter Chips (All, Device Audio, Bundled) - Scrollable
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          physics: const BouncingScrollPhysics(),
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 4),
           child: Row(
             children: [
@@ -920,11 +922,15 @@ class _HomePlayerScreenState extends State<HomePlayerScreen> with SingleTickerPr
                         ),
                         subtitle: Row(
                           children: [
-                            Text(
-                              song.artist,
-                              style: const TextStyle(fontSize: 11, color: Colors.white54),
+                            Flexible(
+                              child: Text(
+                                song.artist,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(fontSize: 11, color: Colors.white54),
+                              ),
                             ),
-                            const Text(' · ', style: TextStyle(color: Colors.white30)),
+                            const SizedBox(width: 6),
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
                               decoration: BoxDecoration(
@@ -932,7 +938,7 @@ class _HomePlayerScreenState extends State<HomePlayerScreen> with SingleTickerPr
                                 borderRadius: BorderRadius.circular(4),
                               ),
                               child: Text(
-                                song.isAsset ? 'Demo Sound' : 'Local Storage',
+                                song.isAsset ? 'Demo' : 'Local',
                                 style: TextStyle(
                                   fontSize: 9,
                                   fontWeight: FontWeight.bold,
@@ -947,6 +953,8 @@ class _HomePlayerScreenState extends State<HomePlayerScreen> with SingleTickerPr
                           children: [
                             // Tune With DPS button (plays track & switches to DPS Studio)
                             IconButton(
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(minWidth: 30, minHeight: 30),
                               icon: const Icon(Icons.tune_rounded, size: 18, color: AppTheme.neonCyan),
                               tooltip: 'Tune DPS for this song',
                               onPressed: () {
@@ -954,8 +962,11 @@ class _HomePlayerScreenState extends State<HomePlayerScreen> with SingleTickerPr
                                 widget.onOpenDPSStudio();
                               },
                             ),
+                            const SizedBox(width: 4),
                             // Quick options menu
                             PopupMenuButton<String>(
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(minWidth: 26, minHeight: 26),
                               icon: const Icon(Icons.more_vert_rounded, size: 18, color: Colors.white38),
                               color: AppTheme.surfaceElevated,
                               onSelected: (val) {
