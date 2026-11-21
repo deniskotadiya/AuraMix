@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "222104108240",
+    "project_id": "auramix-158e5",
+    "storage_bucket": "auramix-158e5.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:222104108240:android:019d314211d9dc5957f2d5",
+        "android_client_info": {
+          "package_name": "com.squareinfosoft.auramix.android"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCAUehel-9vzjl5hoFTpSiVP_YRaN0iT9E"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,0 +1,51 @@
+name: auramix
+description: AuraMix - Capriccio-inspired DPS Sound Effect Music Player with Community Sharing and Car Audio Visualizer.
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.3.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  just_audio: ^0.9.46
+  audio_session: ^0.1.25
+  google_mobile_ads: ^5.3.1
+  firebase_core: ^3.13.0
+  firebase_auth: ^5.5.2
+  cloud_firestore: ^5.6.6
+  firebase_storage: ^12.4.5
+  firebase_analytics: ^11.4.5
+  firebase_crashlytics: ^4.3.5
+  firebase_remote_config: ^5.4.3
+  purchases_flutter: ^8.6.1
+  flutter_riverpod: ^2.6.1
+  go_router: ^14.8.1
+  shared_preferences: ^2.5.3
+  uuid: ^4.5.1
+  file_picker: ^8.3.7
+  geolocator: ^13.0.2
+  flutter_launcher_icons: ^0.14.4
+  permission_handler: ^11.4.0
+  intl: ^0.20.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/audio/
+    - assets/images/
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: assets/images/auramix_icon.png
+  adaptive_icon_background: '#080B25'
+  adaptive_icon_foreground: assets/images/auramix_icon.png
+  remove_alpha_ios: true
