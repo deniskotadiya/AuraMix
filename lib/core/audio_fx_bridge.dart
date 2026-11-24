@@ -39,24 +39,92 @@ class AudioFxBridge {
 
     _channel.invokeMethod('setEnabled', {'enabled': true}).catchError((_) {});
 
-    // 1. Equalizer 5-Band mapping from 10 EQ bands + Stem Isolators
-    // Android hardware EQ levels are in millibels (-1500 to +1500, where 1 dB = 100 mB)
-    final band0 = ((active.eqBands[0] * 70) + (active.bassGain * 160) + (active.bassBoost * 200)).round().clamp(-1500, 1500);
-    final band1 = ((active.eqBands[2] * 80) + (active.bassGain * 100) + (active.musicGain * 80)).round().clamp(-1500, 1500);
-    final band2 = ((active.eqBands[4] * 90) + (active.musicGain * 140) + (active.vocalGain * 80)).round().clamp(-1500, 1500);
-    final band3 = ((active.eqBands[6] * 90) + (active.vocalGain * 220) + (active.clarity * 150)).round().clamp(-1500, 1500);
-    final band4 = ((active.eqBands[9] * 80) + (active.trebleGain * 180) + (active.tubeWarmth * 100)).round().clamp(-1500, 1500);
+    // 1. Calculate Stem Equalization with full Isolator kill-switch capability
+    // Range is -1500 mB (-15 dB) to +1500 mB (+15 dB)
+    // Paired with DynamicsProcessing (-60 dB brickwall), this makes any stem completely unlistenable when killed.
+    final isVocalMuted = active.vocalGain <= -10.0;
+    final isBassMuted = active.bassGain <= -10.0;
+    final isMusicMuted = active.musicGain <= -10.0;
+    final isTrebleMuted = active.trebleGain <= -10.0;
+
+    // Band 0 (~60 Hz: Sub-bass, Kick, 808s)
+    int band0;
+    if (isBassMuted) {
+      band0 = -1500; // Total kill of sub-bass
+    } else if (active.bassGain < 0) {
+      band0 = ((active.eqBands[0] * 60) + (active.bassGain * 125)).round().clamp(-1500, 1500);
+    } else {
+      band0 = ((active.eqBands[0] * 60) + (active.bassGain * 110) + (active.bassBoost * 400)).round().clamp(-1500, 1500);
+    }
+
+    // Band 1 (~230 Hz: Bass punch, lower rhythm & vocal chest resonance)
+    int band1;
+    if (isBassMuted && (isVocalMuted || isMusicMuted)) {
+      band1 = -1500; // Complete kill
+    } else if (isBassMuted) {
+      band1 = isMusicMuted ? -1500 : -1400;
+    } else if (isVocalMuted && isMusicMuted) {
+      band1 = -1300 + (active.bassGain * 40).round();
+    } else {
+      final bassContrib = active.bassGain * 80;
+      final musicContrib = active.musicGain * 60;
+      final vocalContrib = active.vocalGain < 0 ? active.vocalGain * 50 : 0.0;
+      band1 = ((active.eqBands[2] * 70) + bassContrib + musicContrib + vocalContrib).round().clamp(-1500, 1500);
+    }
+
+    // Band 2 (~910 Hz: Music body & human vocal formant)
+    int band2;
+    if (isVocalMuted || isMusicMuted) {
+      band2 = -1500; // Complete kill of vocal body and harmonic instruments
+    } else {
+      final vocalContrib = active.vocalGain * 120;
+      final musicContrib = active.musicGain * 80;
+      band2 = ((active.eqBands[4] * 70) + vocalContrib + musicContrib).round().clamp(-1500, 1500);
+    }
+
+    // Band 3 (~3.6 kHz: Words, lyrics, vocal articulation & snare attack)
+    int band3;
+    if (isVocalMuted || isTrebleMuted) {
+      band3 = -1500; // Complete kill of speech articulation / lyrics / words
+    } else {
+      final vocalContrib = active.vocalGain * 130;
+      final trebleContrib = active.trebleGain * 60;
+      band3 = ((active.eqBands[6] * 70) + vocalContrib + trebleContrib + (active.clarity * 200)).round().clamp(-1500, 1500);
+    }
+
+    // Band 4 (~14 kHz: Treble, air, cymbals, acoustic shimmer)
+    int band4;
+    if (isTrebleMuted || (isMusicMuted && active.trebleGain <= 0)) {
+      band4 = -1500; // Complete kill of cymbals, shimmer & treble air
+    } else if (active.trebleGain < 0) {
+      band4 = ((active.eqBands[9] * 70) + (active.trebleGain * 125)).round().clamp(-1500, 1500);
+    } else {
+      band4 = ((active.eqBands[9] * 70) + (active.trebleGain * 120) + (active.tubeWarmth * 150)).round().clamp(-1500, 1500);
+    }
 
     _channel.invokeMethod('setEqualizerBands', {
       'levels': [band0, band1, band2, band3, band4],
     }).catchError((e) => debugPrint('[AudioFxBridge] setEqualizerBands error: $e'));
 
     // 2. Hardware BassBoost strength (0 to 1000)
-    final bassFactor = ((active.bassBoost * 0.75 + (active.bassGain > 0 ? (active.bassGain / 6.0) * 0.25 : 0.0)) * 1000).round().clamp(0, 1000);
+    int bassFactor;
+    if (isBassMuted || active.bassGain <= -6.0) {
+      bassFactor = 0; // Completely off
+    } else {
+      bassFactor = ((active.bassBoost * 0.70 + (active.bassGain > 0 ? (active.bassGain / 12.0) * 0.30 : 0.0)) * 1000).round().clamp(0, 1000);
+    }
     _channel.invokeMethod('setBassBoost', {'strength': bassFactor}).catchError((_) {});
 
-    // 3. Hardware Virtualizer / 3D Spatializer (0 to 1000)
-    final virtualizerFactor = (active.surround3D * 1000).round().clamp(0, 1000);
+    // 3. Hardware Virtualizer (3D Spatializer)
+    // When vocal is muted, Virtualizer phase difference cancels center-panned vocals!
+    int virtualizerFactor;
+    if (isVocalMuted) {
+      virtualizerFactor = 1000;
+    } else if (isMusicMuted) {
+      virtualizerFactor = 0; // Collapse stereo field
+    } else {
+      virtualizerFactor = (active.surround3D * 1000).round().clamp(0, 1000);
+    }
     _channel.invokeMethod('setVirtualizer', {'strength': virtualizerFactor}).catchError((_) {});
 
     // 4. Dynamic Loudness & Compression
@@ -67,19 +135,19 @@ class AudioFxBridge {
     int revPreset = 0;
     switch (active.reverbType) {
       case 'Studio':
-        revPreset = 1; // SmallRoom
+        revPreset = 1;
         break;
       case 'Club':
-        revPreset = 2; // MediumRoom
+        revPreset = 2;
         break;
       case 'Arena':
-        revPreset = 3; // LargeRoom
+        revPreset = 3;
         break;
       case 'Cathedral':
-        revPreset = 4; // MediumHall
+        revPreset = 4;
         break;
       default:
-        revPreset = 0; // None
+        revPreset = 0;
     }
     _channel.invokeMethod('setReverb', {'preset': revPreset}).catchError((_) {});
   }

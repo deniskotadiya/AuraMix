@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../core/app_theme.dart';
 import '../../core/dps_engine.dart';
 import '../../core/auth_service.dart';
@@ -351,6 +352,53 @@ class DPSStudioScreen extends StatelessWidget {
                             ),
                           ],
                         ),
+                        // Quick Stem Isolation Presets
+                        SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: Row(
+                            children: [
+                              _buildStemPresetChip(
+                                label: 'Karaoke (Mute Vocals)',
+                                icon: Icons.mic_off_rounded,
+                                isSelected: active.vocalGain <= -10.0 && active.musicGain >= 0.0,
+                                onTap: () {
+                                  HapticFeedback.mediumImpact();
+                                  dps.setVocalGain(-12.0);
+                                  dps.setMusicGain(0.0);
+                                  dps.setBassGain(0.0);
+                                  dps.setTrebleGain(0.0);
+                                },
+                              ),
+                              const SizedBox(width: 6),
+                              _buildStemPresetChip(
+                                label: 'Acapella (Vocals Only)',
+                                icon: Icons.record_voice_over_rounded,
+                                isSelected: active.vocalGain >= 0.0 && active.musicGain <= -10.0 && active.bassGain <= -10.0,
+                                onTap: () {
+                                  HapticFeedback.mediumImpact();
+                                  dps.setVocalGain(4.0);
+                                  dps.setMusicGain(-12.0);
+                                  dps.setBassGain(-12.0);
+                                  dps.setTrebleGain(-12.0);
+                                },
+                              ),
+                              const SizedBox(width: 6),
+                              _buildStemPresetChip(
+                                label: 'Bass Cannon',
+                                icon: Icons.speaker_group_rounded,
+                                isSelected: active.bassGain >= 8.0,
+                                onTap: () {
+                                  HapticFeedback.mediumImpact();
+                                  dps.setBassGain(12.0);
+                                  dps.setVocalGain(0.0);
+                                  dps.setMusicGain(2.0);
+                                  dps.setTrebleGain(-4.0);
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
                         const SizedBox(height: 6),
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -548,6 +596,45 @@ class DPSStudioScreen extends StatelessWidget {
     );
   }
 
+  Widget _buildStemPresetChip({
+    required String label,
+    required IconData icon,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(20),
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: isSelected ? AppTheme.neonCyan.withAlpha(40) : Colors.white.withAlpha(12),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isSelected ? AppTheme.neonCyan : Colors.white24,
+            width: isSelected ? 1.2 : 0.8,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 13, color: isSelected ? AppTheme.neonCyan : Colors.white70),
+            const SizedBox(width: 5),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 10.5,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                color: isSelected ? AppTheme.neonCyan : Colors.white70,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildStemRow({
     required IconData icon,
     required String label,
@@ -555,44 +642,93 @@ class DPSStudioScreen extends StatelessWidget {
     required Color color,
     required ValueChanged<double> onChanged,
   }) {
-    return Row(
+    final isMuted = value <= -11.0;
+    final isMax = value >= 11.0;
+
+    String statusText;
+    Color statusColor;
+    if (isMuted) {
+      statusText = 'MUTED (UNLISTENABLE)';
+      statusColor = Colors.redAccent;
+    } else if (isMax) {
+      statusText = 'MAX BOOST';
+      statusColor = AppTheme.carNeonGreen;
+    } else if (value.abs() < 0.5) {
+      statusText = 'BALANCED (0 dB)';
+      statusColor = Colors.white70;
+    } else {
+      statusText = '${value >= 0 ? "+" : ""}${value.toStringAsFixed(1)} dB';
+      statusColor = color;
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, size: 18, color: color),
-        const SizedBox(width: 10),
-        SizedBox(
-          width: 130,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+        Row(
+          children: [
+            Icon(icon, size: 16, color: isMuted ? Colors.white30 : color),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: isMuted ? Colors.white54 : Colors.white,
               ),
-              Text(
-                '${value >= 0 ? "+" : ""}${value.toStringAsFixed(1)} dB',
-                style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: color),
+            ),
+            const Spacer(),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: statusColor.withAlpha(25),
+                borderRadius: BorderRadius.circular(4),
+                border: Border.all(color: statusColor.withAlpha(80), width: 0.8),
               ),
-            ],
-          ),
+              child: Text(
+                statusText,
+                style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: statusColor),
+              ),
+            ),
+            const SizedBox(width: 6),
+            InkWell(
+              borderRadius: BorderRadius.circular(6),
+              onTap: () {
+                HapticFeedback.lightImpact();
+                onChanged(isMuted ? 0.0 : -12.0);
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: isMuted ? Colors.redAccent.withAlpha(40) : Colors.white10,
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: isMuted ? Colors.redAccent : Colors.white24),
+                ),
+                child: Text(
+                  isMuted ? 'UNMUTE' : 'MUTE',
+                  style: TextStyle(
+                    fontSize: 9,
+                    fontWeight: FontWeight.bold,
+                    color: isMuted ? Colors.redAccent : Colors.white70,
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
-        Expanded(
-          child: SliderTheme(
-            data: SliderThemeData(
-              trackHeight: 3.5,
-              thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
-              activeTrackColor: color,
-              inactiveTrackColor: Colors.white12,
-              thumbColor: Colors.white,
-            ),
-            child: Slider(
-              value: value,
-              min: -12.0,
-              max: 12.0,
-              divisions: 48,
-              onChanged: onChanged,
-            ),
+        SliderTheme(
+          data: SliderThemeData(
+            trackHeight: 3.5,
+            thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
+            activeTrackColor: isMuted ? Colors.white24 : color,
+            inactiveTrackColor: Colors.white12,
+            thumbColor: isMuted ? Colors.redAccent : Colors.white,
+          ),
+          child: Slider(
+            value: value,
+            min: -12.0,
+            max: 12.0,
+            divisions: 48,
+            onChanged: onChanged,
           ),
         ),
       ],

@@ -128,11 +128,22 @@ class AudioPlayerService extends ChangeNotifier {
         try {
           _player.setPitch(pow(2.0, active.pitchShift / 12.0).toDouble());
         } catch (_) {}
+
+        // Master brickwall mute if all stems are turned down/muted to unlistenable
+        if (active.vocalGain <= -10.0 &&
+            active.musicGain <= -10.0 &&
+            active.bassGain <= -10.0 &&
+            active.trebleGain <= -10.0) {
+          _player.setVolume(0.0);
+        } else {
+          _player.setVolume(1.0);
+        }
       } else {
         _player.setSpeed(1.0);
         try {
           _player.setPitch(1.0);
         } catch (_) {}
+        _player.setVolume(1.0);
       }
 
       // Sync hardware Equalizer, BassBoost, Virtualizer, and Stem filters in real-time
