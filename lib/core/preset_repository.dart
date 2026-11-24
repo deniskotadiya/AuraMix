@@ -111,6 +111,15 @@ class PresetRepository extends ChangeNotifier {
     return newPreset;
   }
 
+  /// Record play count when preset is applied
+  void recordPlay(String presetId) {
+    final index = _presets.indexWhere((p) => p.id == presetId);
+    if (index != -1) {
+      _presets[index].plays += 1;
+      notifyListeners();
+    }
+  }
+
   /// Like or Dislike interaction
   Future<void> toggleReaction(String presetId, String reaction) async {
     final index = _presets.indexWhere((p) => p.id == presetId);

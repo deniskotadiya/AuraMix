@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../core/app_theme.dart';
 import '../../core/preset_repository.dart';
 import '../../core/dps_engine.dart';
@@ -38,16 +39,28 @@ class _CommunityPresetsScreenState extends State<CommunityPresetsScreen> {
         controlName: preset.title,
         description: '${preset.description}\nWatch a quick ad to use this premium community sound profile for 1 session or get VIP!',
         onUnlocked: () {
+          HapticFeedback.lightImpact();
           DPSEngine.instance.loadPreset(preset);
+          PresetRepository.instance.recordPlay(preset.id);
+          if (mounted) setState(() {});
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Applied "${preset.title}" DPS effect!')),
+            SnackBar(
+              content: Text('Applied "${preset.title}" DPS effect!'),
+              duration: const Duration(seconds: 2),
+            ),
           );
         },
       );
     } else {
+      HapticFeedback.lightImpact();
       DPSEngine.instance.loadPreset(preset);
+      PresetRepository.instance.recordPlay(preset.id);
+      if (mounted) setState(() {});
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Applied "${preset.title}" DPS effect!')),
+        SnackBar(
+          content: Text('Applied "${preset.title}" DPS effect!'),
+          duration: const Duration(seconds: 2),
+        ),
       );
     }
   }
@@ -55,7 +68,7 @@ class _CommunityPresetsScreenState extends State<CommunityPresetsScreen> {
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
-      listenable: PresetRepository.instance,
+      listenable: Listenable.merge([PresetRepository.instance, DPSEngine.instance]),
       builder: (context, _) {
         final presets = PresetRepository.instance.getFilteredPresets(
           query: _searchQuery,
