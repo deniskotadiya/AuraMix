@@ -3,216 +3,161 @@ import 'package:flutter/material.dart';
 import '../../core/app_theme.dart';
 import '../../core/audio_player_service.dart';
 
-class AnimatedVisualizer extends StatelessWidget {
+class AnimatedVisualizer extends StatefulWidget {
   final double height;
-  final bool showVUMeter;
+  final bool showVUMeter; // Kept for backwards compatibility, CH-L/R removed
 
   const AnimatedVisualizer({
     super.key,
-    this.height = 70,
+    this.height = 54,
     this.showVUMeter = false,
   });
 
   @override
-  Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        if (showVUMeter) ...[
-          const DualAnalogVUMeter(),
-          const SizedBox(height: 12),
-        ],
-        ValueListenableBuilder<List<double>>(
-          valueListenable: AudioPlayerService.instance.visualizerBands,
-          builder: (context, bands, _) {
-            return SizedBox(
-              height: height,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: List.generate(bands.length, (index) {
-                  final amp = bands[index];
-                  return AnimatedContainer(
-                    duration: const Duration(milliseconds: 60),
-                    curve: Curves.easeOutQuad,
-                    width: (MediaQuery.of(context).size.width - 64) / (bands.length * 1.45),
-                    height: (amp * height).clamp(4.0, height),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(4),
-                      gradient: LinearGradient(
-                        begin: Alignment.bottomCenter,
-                        end: Alignment.topCenter,
-                        colors: [
-                          AppTheme.neonCyan,
-                          if (amp > 0.5) AppTheme.neonPurple else AppTheme.electricBlue,
-                          if (amp > 0.8) AppTheme.neonPink else AppTheme.neonPurple,
-                        ],
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppTheme.neonCyan.withAlpha((amp * 90).toInt()),
-                          blurRadius: 6,
-                          spreadRadius: 0.5,
-                        ),
-                      ],
-                    ),
-                  );
-                }),
-              ),
-            );
-          },
-        ),
-      ],
-    );
-  }
+  State<AnimatedVisualizer> createState() => _AnimatedVisualizerState();
 }
 
-/// Dual Analog VU Meter (L & R Channels) styled like classic high-end car stereo gauges
-class DualAnalogVUMeter extends StatelessWidget {
-  const DualAnalogVUMeter({super.key});
+class _AnimatedVisualizerState extends State<AnimatedVisualizer>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _waveController;
+
+  @override
+  void initState() {
+    super.initState();
+    _waveController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 3200),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _waveController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: ValueListenableBuilder<double>(
-            valueListenable: AudioPlayerService.instance.vuMeterLeft,
-            builder: (context, value, _) {
-              return _VUMeterGauge(channel: 'CH-L', value: value);
-            },
+    return ListenableBuilder(
+      listenable: Listenable.merge([
+        _waveController,
+        AudioPlayerService.instance,
+      ]),
+      builder: (context, _) {
+        final isPlaying = AudioPlayerService.instance.isPlaying;
+        final phase = _waveController.value * 2 * pi;
+
+        return Container(
+          height: widget.height,
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: const Color(0xFF0C0E1E).withAlpha(140),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.white.withAlpha(12), width: 1),
           ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: ValueListenableBuilder<double>(
-            valueListenable: AudioPlayerService.instance.vuMeterRight,
-            builder: (context, value, _) {
-              return _VUMeterGauge(channel: 'CH-R', value: value);
-            },
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: CustomPaint(
+              painter: _RelaxingFluidWavePainter(
+                phase: phase,
+                isPlaying: isPlaying,
+              ),
+              size: Size(double.infinity, widget.height),
+            ),
           ),
-        ),
-      ],
+        );
+      },
     );
   }
 }
 
-class _VUMeterGauge extends StatelessWidget {
-  final String channel;
-  final double value;
+class _RelaxingFluidWavePainter extends CustomPainter {
+  final double phase;
+  final bool isPlaying;
 
-  const _VUMeterGauge({
-    required this.channel,
-    required this.value,
+  _RelaxingFluidWavePainter({
+    required this.phase,
+    required this.isPlaying,
   });
 
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 64,
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: const Color(0xFF101222),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withAlpha(20)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withAlpha(120),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Stack(
-        children: [
-          Align(
-            alignment: Alignment.topLeft,
-            child: Text(
-              channel,
-              style: const TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.bold,
-                color: AppTheme.neonCyan,
-                letterSpacing: 1.0,
-              ),
-            ),
-          ),
-          Align(
-            alignment: Alignment.topRight,
-            child: Text(
-              '${(value * 100).toInt()}%',
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.bold,
-                color: value > 0.85 ? AppTheme.neonPink : Colors.white60,
-              ),
-            ),
-          ),
-          Positioned.fill(
-            top: 14,
-            child: CustomPaint(
-              painter: _VUNeedlePainter(value: value),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _VUNeedlePainter extends CustomPainter {
-  final double value; // 0.0 to 1.0
-
-  _VUNeedlePainter({required this.value});
-
-  @override
   void paint(Canvas canvas, Size size) {
-    final pivot = Offset(size.width / 2, size.height + 15);
-    final needleLength = size.height + 10;
+    final centerY = size.height / 2;
+    final width = size.width;
 
-    // Needle sweep: -50 deg to +50 deg
-    final angle = (-50 + (value * 100)) * (pi / 180);
+    final primaryAmplitude = isPlaying ? size.height * 0.28 : size.height * 0.08;
+    final secondaryAmplitude = isPlaying ? size.height * 0.18 : size.height * 0.05;
 
-    // Scale tick marks
-    final scalePaint = Paint()
-      ..color = Colors.white.withAlpha(40)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.2;
-
-    for (int i = 0; i <= 8; i++) {
-      final tickAngle = (-50 + (i * 12.5)) * (pi / 180);
-      final rInner = needleLength - 10;
-      final rOuter = needleLength - 4;
-      final p1 = Offset(pivot.dx + rInner * sin(tickAngle), pivot.dy - rInner * cos(tickAngle));
-      final p2 = Offset(pivot.dx + rOuter * sin(tickAngle), pivot.dy - rOuter * cos(tickAngle));
-
-      if (i >= 6) {
-        scalePaint.color = AppTheme.neonPink.withAlpha(180);
-      } else {
-        scalePaint.color = Colors.white.withAlpha(50);
-      }
-      canvas.drawLine(p1, p2, scalePaint);
+    // Secondary ambient background wave (Violet/Cyan soft layer)
+    final path2 = Path();
+    path2.moveTo(0, centerY);
+    for (double x = 0; x <= width; x += 3) {
+      final normalizedX = x / width;
+      final y = centerY +
+          sin(normalizedX * 2 * pi * 1.5 - phase * 0.8) *
+              secondaryAmplitude *
+              sin(normalizedX * pi); // Soft taper at ends
+      path2.lineTo(x, y);
     }
 
-    // Needle
-    final needleTip = Offset(
-      pivot.dx + needleLength * sin(angle),
-      pivot.dy - needleLength * cos(angle),
-    );
+    final paint2 = Paint()
+      ..color = AppTheme.neonPurple.withAlpha(60)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.5
+      ..strokeCap = StrokeCap.round;
 
-    final needlePaint = Paint()
-      ..color = value > 0.85 ? AppTheme.neonPink : AppTheme.carAmber
-      ..strokeWidth = 2.0
+    canvas.drawPath(path2, paint2);
+
+    // Primary foreground relaxing sine wave (Cyan glow)
+    final path1 = Path();
+    path1.moveTo(0, centerY);
+    for (double x = 0; x <= width; x += 3) {
+      final normalizedX = x / width;
+      final y = centerY +
+          sin(normalizedX * 2 * pi * 2.0 + phase) *
+              primaryAmplitude *
+              sin(normalizedX * pi); // Soft taper at ends
+      path1.lineTo(x, y);
+    }
+
+    // Glow under primary wave
+    final glowPaint = Paint()
+      ..color = AppTheme.neonCyan.withAlpha(isPlaying ? 85 : 35)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 6.0
       ..strokeCap = StrokeCap.round
-      ..style = PaintingStyle.stroke;
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4);
 
-    canvas.drawLine(pivot, needleTip, needlePaint);
+    canvas.drawPath(path1, glowPaint);
 
-    // Pivot bulb
-    final bulbPaint = Paint()..color = const Color(0xFF282B42);
-    canvas.drawCircle(pivot, 5, bulbPaint);
+    // Crisp primary wave
+    final paint1 = Paint()
+      ..shader = const LinearGradient(
+        colors: [
+          AppTheme.neonCyan,
+          AppTheme.electricBlue,
+          AppTheme.neonPurple,
+        ],
+      ).createShader(Rect.fromLTWH(0, 0, width, size.height))
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.8
+      ..strokeCap = StrokeCap.round;
+
+    canvas.drawPath(path1, paint1);
+
+    // Gentle center node dot
+    final centerPulse = isPlaying ? (sin(phase * 2) * 1.5 + 4.0) : 3.0;
+    final dotPaint = Paint()..color = AppTheme.neonCyan;
+    final dotGlow = Paint()
+      ..color = AppTheme.neonCyan.withAlpha(120)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3);
+
+    final dotY = centerY + sin(0.5 * 2 * pi * 2.0 + phase) * primaryAmplitude;
+    canvas.drawCircle(Offset(width / 2, dotY), centerPulse + 2, dotGlow);
+    canvas.drawCircle(Offset(width / 2, dotY), centerPulse, dotPaint);
   }
 
   @override
-  bool shouldRepaint(covariant _VUNeedlePainter oldDelegate) => oldDelegate.value != value;
+  bool shouldRepaint(covariant _RelaxingFluidWavePainter oldDelegate) =>
+      oldDelegate.phase != phase || oldDelegate.isPlaying != isPlaying;
 }

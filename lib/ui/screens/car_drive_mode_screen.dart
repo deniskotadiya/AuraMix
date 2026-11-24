@@ -25,10 +25,11 @@ class _CarDriveModeScreenState extends State<CarDriveModeScreen> {
 
   void _updateTime() {
     final now = DateTime.now();
-    final hour = now.hour.toString().padLeft(2, '0');
+    final hour12 = now.hour % 12 == 0 ? 12 : now.hour % 12;
     final minute = now.minute.toString().padLeft(2, '0');
+    final period = now.hour >= 12 ? 'PM' : 'AM';
     if (mounted) {
-      setState(() => _currentTime = '$hour:$minute');
+      setState(() => _currentTime = '$hour12:$minute $period');
     }
   }
 
@@ -152,10 +153,6 @@ class _CarDriveModeScreenState extends State<CarDriveModeScreen> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 14),
-
-                    // Cockpit Analog VU Gauge Display
-                    const DualAnalogVUMeter(),
                     const Spacer(),
 
                     // Big Track Information

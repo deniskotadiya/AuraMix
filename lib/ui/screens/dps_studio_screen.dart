@@ -337,6 +337,62 @@ class DPSStudioScreen extends StatelessWidget {
                         ),
                         const SizedBox(height: 22),
 
+                        // Stem & Instrument Sound Isolation (Vocals, Music, Beat, Air)
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text(
+                              'STEM & INSTRUMENT EQUALIZATION',
+                              style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1.2, color: AppTheme.neonCyan),
+                            ),
+                            TextButton(
+                              onPressed: () => dps.resetStems(),
+                              child: const Text('Reset All', style: TextStyle(color: Colors.white54, fontSize: 11)),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                          decoration: AppTheme.glassBoxDecoration(radius: 16),
+                          child: Column(
+                            children: [
+                              _buildStemRow(
+                                icon: Icons.record_voice_over_rounded,
+                                label: 'Words & Vocals',
+                                value: active.vocalGain,
+                                color: AppTheme.neonPurple,
+                                onChanged: (v) => dps.setVocalGain(v),
+                              ),
+                              const Divider(color: Colors.white10, height: 16),
+                              _buildStemRow(
+                                icon: Icons.music_note_rounded,
+                                label: 'Music & Harmony',
+                                value: active.musicGain,
+                                color: AppTheme.neonCyan,
+                                onChanged: (v) => dps.setMusicGain(v),
+                              ),
+                              const Divider(color: Colors.white10, height: 16),
+                              _buildStemRow(
+                                icon: Icons.album_rounded,
+                                label: 'Bass & Rhythm / Beat',
+                                value: active.bassGain,
+                                color: AppTheme.carNeonGreen,
+                                onChanged: (v) => dps.setBassGain(v),
+                              ),
+                              const Divider(color: Colors.white10, height: 16),
+                              _buildStemRow(
+                                icon: Icons.auto_awesome_rounded,
+                                label: 'Treble & Shimmer',
+                                value: active.trebleGain,
+                                color: AppTheme.carAmber,
+                                onChanged: (v) => dps.setTrebleGain(v),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 22),
+
                         // 10-Band Graphic Equalizer
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -489,6 +545,57 @@ class DPSStudioScreen extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+
+  Widget _buildStemRow({
+    required IconData icon,
+    required String label,
+    required double value,
+    required Color color,
+    required ValueChanged<double> onChanged,
+  }) {
+    return Row(
+      children: [
+        Icon(icon, size: 18, color: color),
+        const SizedBox(width: 10),
+        SizedBox(
+          width: 130,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              Text(
+                '${value >= 0 ? "+" : ""}${value.toStringAsFixed(1)} dB',
+                style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: color),
+              ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: SliderTheme(
+            data: SliderThemeData(
+              trackHeight: 3.5,
+              thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
+              activeTrackColor: color,
+              inactiveTrackColor: Colors.white12,
+              thumbColor: Colors.white,
+            ),
+            child: Slider(
+              value: value,
+              min: -6.0,
+              max: 6.0,
+              divisions: 24,
+              onChanged: onChanged,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

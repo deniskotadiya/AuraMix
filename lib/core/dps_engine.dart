@@ -143,6 +143,42 @@ class DPSEngine extends ChangeNotifier {
     AdService.instance.recordUserAction(reason: 'Speed Adjusted');
   }
 
+  // Stem & Instrument Level Isolators
+  void setVocalGain(double db) {
+    _activePreset = _activePreset.copyWith(vocalGain: db.clamp(-6.0, 6.0));
+    notifyListeners();
+    AdService.instance.recordUserAction(reason: 'Vocal / Word Level Adjusted');
+  }
+
+  void setMusicGain(double db) {
+    _activePreset = _activePreset.copyWith(musicGain: db.clamp(-6.0, 6.0));
+    notifyListeners();
+    AdService.instance.recordUserAction(reason: 'Music / Instrument Level Adjusted');
+  }
+
+  void setBassGain(double db) {
+    _activePreset = _activePreset.copyWith(bassGain: db.clamp(-6.0, 6.0));
+    notifyListeners();
+    AdService.instance.recordUserAction(reason: 'Bass / Rhythm Level Adjusted');
+  }
+
+  void setTrebleGain(double db) {
+    _activePreset = _activePreset.copyWith(trebleGain: db.clamp(-6.0, 6.0));
+    notifyListeners();
+    AdService.instance.recordUserAction(reason: 'Treble / Air Level Adjusted');
+  }
+
+  void resetStems() {
+    _activePreset = _activePreset.copyWith(
+      vocalGain: 0.0,
+      musicGain: 0.0,
+      bassGain: 0.0,
+      trebleGain: 0.0,
+    );
+    notifyListeners();
+    AdService.instance.recordUserAction(reason: 'Stems Reset');
+  }
+
   static const List<String> eqFrequencies = [
     '31Hz',
     '63Hz',

@@ -1,7 +1,37 @@
 import 'dart:math';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../core/app_theme.dart';
+
+class _ImmediateKnobGestureRecognizer extends OneSequenceGestureRecognizer {
+  ValueChanged<Offset>? onTouchDown;
+  ValueChanged<Offset>? onTouchUpdate;
+  VoidCallback? onTouchUp;
+
+  @override
+  void addAllowedPointer(PointerDownEvent event) {
+    startTrackingPointer(event.pointer, event.transform);
+    resolve(GestureDisposition.accepted); // Immediately win gesture arena to prevent SingleChildScrollView from scrolling
+    onTouchDown?.call(event.localPosition);
+  }
+
+  @override
+  void handleEvent(PointerEvent event) {
+    if (event is PointerMoveEvent) {
+      onTouchUpdate?.call(event.localPosition);
+    } else if (event is PointerUpEvent || event is PointerCancelEvent) {
+      onTouchUp?.call();
+      stopTrackingPointer(event.pointer);
+    }
+  }
+
+  @override
+  String get debugDescription => 'ImmediateKnobGestureRecognizer';
+
+  @override
+  void didStopTrackingLastPointer(int pointer) {}
+}
 
 class GlowingRotaryKnob extends StatefulWidget {
   final double value; // 0.0 to 1.0
@@ -33,9 +63,6 @@ class _GlowingRotaryKnobState extends State<GlowingRotaryKnob> {
   static const double _knobSize = 84.0;
   static const Offset _knobCenter = Offset(_knobSize / 2, _knobSize / 2);
 
-  double _dragStartY = 0;
-  double _startValue = 0;
-  bool _isCenterDrag = false;
   bool _isInteracting = false;
   double _lastVibratedStep = -1;
 
@@ -100,70 +127,35 @@ class _GlowingRotaryKnobState extends State<GlowingRotaryKnob> {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        GestureDetector(
+        RawGestureDetector(
           behavior: HitTestBehavior.opaque,
-          onTap: isLocked ? widget.onLockedTap : null,
-          onTapDown: isLocked
-              ? null
-              : (details) {
-                  final dx = details.localPosition.dx - _knobCenter.dx;
-                  final dy = details.localPosition.dy - _knobCenter.dy;
-                  final dist = sqrt(dx * dx + dy * dy);
-                  // Tapping the outer circular arc track jumps to that position directly
-                  if (dist >= 18) {
-                    _updateValueFromPosition(details.localPosition);
-                  }
-                },
-          onPanStart: isLocked
-              ? null
-              : (details) {
-                  setState(() => _isInteracting = true);
-                  final dx = details.localPosition.dx - _knobCenter.dx;
-                  final dy = details.localPosition.dy - _knobCenter.dy;
-                  final dist = sqrt(dx * dx + dy * dy);
-
-                  if (dist < 22) {
-                    // Center disc touch: allow linear vertical drag or radial expansion
-                    _isCenterDrag = true;
-                    _dragStartY = details.localPosition.dy;
-                    _startValue = widget.value;
-                  } else {
-                    // Arc touch: direct angular tracking along circle path
-                    _isCenterDrag = false;
-                    _updateValueFromPosition(details.localPosition);
-                  }
-                },
-          onPanUpdate: isLocked
-              ? null
-              : (details) {
-                  final dx = details.localPosition.dx - _knobCenter.dx;
-                  final dy = details.localPosition.dy - _knobCenter.dy;
-                  final dist = sqrt(dx * dx + dy * dy);
-
-                  if (_isCenterDrag && dist < 26) {
-                    // Linear vertical drag while finger stays near center
-                    final delta = (_dragStartY - details.localPosition.dy) / 120.0;
-                    final newVal = (_startValue + delta).clamp(0.0, 1.0);
-                    if ((newVal - widget.value).abs() > 0.001) {
-                      widget.onChanged(newVal);
-                      _triggerHaptic(newVal);
+          gestures: <Type, GestureRecognizerFactory>{
+            _ImmediateKnobGestureRecognizer:
+                GestureRecognizerFactoryWithHandlers<_ImmediateKnobGestureRecognizer>(
+              () => _ImmediateKnobGestureRecognizer(),
+              (_ImmediateKnobGestureRecognizer instance) {
+                instance
+                  ..onTouchDown = (pos) {
+                    if (isLocked) {
+                      widget.onLockedTap?.call();
+                    } else {
+                      setState(() => _isInteracting = true);
+                      _updateValueFromPosition(pos);
                     }
-                  } else {
-                    // Seamless radial circular tracking along circle path
-                    _isCenterDrag = false;
-                    _updateValueFromPosition(details.localPosition);
                   }
-                },
-          onPanEnd: isLocked
-              ? null
-              : (_) {
-                  setState(() => _isInteracting = false);
-                },
-          onPanCancel: isLocked
-              ? null
-              : () {
-                  setState(() => _isInteracting = false);
-                },
+                  ..onTouchUpdate = (pos) {
+                    if (!isLocked) {
+                      _updateValueFromPosition(pos);
+                    }
+                  }
+                  ..onTouchUp = () {
+                    if (!isLocked) {
+                      setState(() => _isInteracting = false);
+                    }
+                  };
+              },
+            ),
+          },
           child: Stack(
             alignment: Alignment.center,
             children: [

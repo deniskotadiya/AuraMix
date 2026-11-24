@@ -603,8 +603,8 @@ class _HomePlayerScreenState extends State<HomePlayerScreen> with SingleTickerPr
           ),
           const SizedBox(height: 12),
 
-          // Animated Visualizer with Dual Analog VU Meters
-          const AnimatedVisualizer(height: 50, showVUMeter: true),
+          // Smooth Ambient Fluid Wave Visualizer
+          const AnimatedVisualizer(height: 52),
           const SizedBox(height: 8),
 
           // Audio Seek Bar
@@ -880,155 +880,216 @@ class _HomePlayerScreenState extends State<HomePlayerScreen> with SingleTickerPr
                     ],
                   ),
                 )
-              : ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                  itemCount: filtered.length,
-                  itemBuilder: (ctx, idx) {
-                    final song = filtered[idx];
-                    final isCurrent = song.id == currentSong?.id;
-
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 6),
-                      decoration: BoxDecoration(
-                        color: isCurrent ? AppTheme.neonCyan.withAlpha(20) : AppTheme.surfaceDark,
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(
-                          color: isCurrent ? AppTheme.neonCyan.withAlpha(90) : Colors.white.withAlpha(12),
-                          width: isCurrent ? 1.2 : 0.8,
-                        ),
-                      ),
-                      child: ListTile(
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-                        leading: Container(
-                          width: 44,
-                          height: 44,
-                          decoration: BoxDecoration(
-                            gradient: isCurrent ? AppTheme.cyanPurpleGradient : null,
-                            color: isCurrent ? null : AppTheme.surfaceElevated,
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Icon(
-                            isCurrent
-                                ? (AudioPlayerService.instance.isPlaying ? Icons.graphic_eq_rounded : Icons.play_arrow_rounded)
-                                : (song.isAsset ? Icons.audiotrack_rounded : Icons.music_note_rounded),
-                            color: isCurrent ? Colors.white : AppTheme.neonCyan,
-                            size: 22,
-                          ),
-                        ),
-                        title: Text(
-                          song.title,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: isCurrent ? FontWeight.bold : FontWeight.w600,
-                            color: isCurrent ? AppTheme.neonCyan : Colors.white,
-                          ),
-                        ),
-                        subtitle: Row(
-                          children: [
-                            Flexible(
-                              child: Text(
-                                song.artist,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(fontSize: 11, color: Colors.white54),
-                              ),
-                            ),
-                            const SizedBox(width: 6),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                              decoration: BoxDecoration(
-                                color: song.isAsset ? Colors.blue.withAlpha(35) : AppTheme.carNeonGreen.withAlpha(35),
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: Text(
-                                song.isAsset ? 'Demo' : 'Local',
-                                style: TextStyle(
-                                  fontSize: 9,
-                                  fontWeight: FontWeight.bold,
-                                  color: song.isAsset ? Colors.lightBlueAccent : AppTheme.carNeonGreen,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            // Tune With DPS button (plays track & switches to DPS Studio)
-                            IconButton(
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(minWidth: 30, minHeight: 30),
-                              icon: const Icon(Icons.tune_rounded, size: 18, color: AppTheme.neonCyan),
-                              tooltip: 'Tune DPS for this song',
-                              onPressed: () {
-                                AudioPlayerService.instance.playSong(song);
-                                widget.onOpenDPSStudio();
-                              },
-                            ),
-                            const SizedBox(width: 4),
-                            // Quick options menu
-                            PopupMenuButton<String>(
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(minWidth: 26, minHeight: 26),
-                              icon: const Icon(Icons.more_vert_rounded, size: 18, color: Colors.white38),
-                              color: AppTheme.surfaceElevated,
-                              onSelected: (val) {
-                                if (val == 'play') {
-                                  AudioPlayerService.instance.playSong(song);
-                                } else if (val == 'tune') {
-                                  AudioPlayerService.instance.playSong(song);
-                                  widget.onOpenDPSStudio();
-                                } else if (val == 'remove') {
-                                  AudioPlayerService.instance.removeSong(song.id);
-                                }
-                              },
-                              itemBuilder: (context) => [
-                                const PopupMenuItem(
-                                  value: 'play',
-                                  child: Row(
-                                    children: [
-                                      Icon(Icons.play_arrow_rounded, color: AppTheme.neonCyan, size: 18),
-                                      SizedBox(width: 8),
-                                      Text('Play Track', style: TextStyle(fontSize: 12)),
-                                    ],
-                                  ),
-                                ),
-                                const PopupMenuItem(
-                                  value: 'tune',
-                                  child: Row(
-                                    children: [
-                                      Icon(Icons.equalizer_rounded, color: AppTheme.neonPurple, size: 18),
-                                      SizedBox(width: 8),
-                                      Text('Customize DPS Effect', style: TextStyle(fontSize: 12)),
-                                    ],
-                                  ),
-                                ),
-                                if (!song.isAsset)
-                                  const PopupMenuItem(
-                                    value: 'remove',
-                                    child: Row(
-                                      children: [
-                                        Icon(Icons.delete_outline_rounded, color: AppTheme.neonPink, size: 18),
-                                        SizedBox(width: 8),
-                                        Text('Remove from Library', style: TextStyle(fontSize: 12)),
-                                      ],
-                                    ),
-                                  ),
-                              ],
-                            ),
-                          ],
-                        ),
-                        onTap: () {
-                          AudioPlayerService.instance.playSong(song);
-                        },
-                      ),
-                    );
-                  },
-                ),
+              : (_searchQuery.isEmpty && _libraryFilter == 0)
+                  ? ReorderableListView.builder(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                      itemCount: filtered.length,
+                      // ignore: deprecated_member_use
+                      onReorder: (oldIndex, newIndex) {
+                        AudioPlayerService.instance.reorderPlaylist(oldIndex, newIndex);
+                      },
+                      itemBuilder: (ctx, idx) => _buildSongListItem(filtered[idx], idx, currentSong),
+                    )
+                  : ListView.builder(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                      itemCount: filtered.length,
+                      itemBuilder: (ctx, idx) => _buildSongListItem(filtered[idx], idx, currentSong, canReorder: false),
+                    ),
         ),
       ],
+    );
+  }
+
+  Widget _buildSongListItem(SongItem song, int idx, SongItem? currentSong, {bool canReorder = true}) {
+    final isCurrent = song.id == currentSong?.id;
+    final isPlaying = isCurrent && AudioPlayerService.instance.isPlaying;
+
+    return Container(
+      key: ValueKey(song.id),
+      margin: const EdgeInsets.only(bottom: 6),
+      decoration: BoxDecoration(
+        color: isCurrent ? AppTheme.neonCyan.withAlpha(20) : AppTheme.surfaceDark,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: isCurrent ? AppTheme.neonCyan.withAlpha(90) : Colors.white.withAlpha(12),
+          width: isCurrent ? 1.2 : 0.8,
+        ),
+      ),
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+        leading: GestureDetector(
+          onTap: () {
+            if (isCurrent) {
+              AudioPlayerService.instance.togglePlayPause();
+            } else {
+              AudioPlayerService.instance.playSong(song);
+            }
+          },
+          child: Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              gradient: isCurrent ? AppTheme.cyanPurpleGradient : null,
+              color: isCurrent ? null : AppTheme.surfaceElevated,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(
+              isCurrent
+                  ? (isPlaying ? Icons.pause_circle_filled_rounded : Icons.play_circle_filled_rounded)
+                  : (song.isAsset ? Icons.audiotrack_rounded : Icons.music_note_rounded),
+              color: isCurrent ? Colors.white : AppTheme.neonCyan,
+              size: 26,
+            ),
+          ),
+        ),
+        title: Text(
+          song.title,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: isCurrent ? FontWeight.bold : FontWeight.w600,
+            color: isCurrent ? AppTheme.neonCyan : Colors.white,
+          ),
+        ),
+        subtitle: Row(
+          children: [
+            Flexible(
+              child: Text(
+                song.artist,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 11, color: Colors.white54),
+              ),
+            ),
+            const SizedBox(width: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+              decoration: BoxDecoration(
+                color: song.isAsset ? Colors.blue.withAlpha(35) : AppTheme.carNeonGreen.withAlpha(35),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                song.isAsset ? 'Demo' : 'Local',
+                style: TextStyle(
+                  fontSize: 9,
+                  fontWeight: FontWeight.bold,
+                  color: song.isAsset ? Colors.lightBlueAccent : AppTheme.carNeonGreen,
+                ),
+              ),
+            ),
+          ],
+        ),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Dedicated Play/Pause action button on item
+            IconButton(
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+              icon: Icon(
+                isPlaying ? Icons.pause_circle_rounded : Icons.play_circle_outline_rounded,
+                size: 22,
+                color: isCurrent ? AppTheme.neonCyan : Colors.white60,
+              ),
+              tooltip: isPlaying ? 'Pause Track' : 'Play Track',
+              onPressed: () {
+                if (isCurrent) {
+                  AudioPlayerService.instance.togglePlayPause();
+                } else {
+                  AudioPlayerService.instance.playSong(song);
+                }
+              },
+            ),
+            // Tune With DPS button (switches to DPS Studio without restarting already playing song)
+            IconButton(
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 30, minHeight: 30),
+              icon: const Icon(Icons.tune_rounded, size: 18, color: AppTheme.neonCyan),
+              tooltip: 'Tune DPS for this song',
+              onPressed: () {
+                if (AudioPlayerService.instance.currentSong?.id != song.id) {
+                  AudioPlayerService.instance.playSong(song);
+                }
+                widget.onOpenDPSStudio();
+              },
+            ),
+            // Quick options menu
+            PopupMenuButton<String>(
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 26, minHeight: 26),
+              icon: const Icon(Icons.more_vert_rounded, size: 18, color: Colors.white38),
+              color: AppTheme.surfaceElevated,
+              onSelected: (val) {
+                if (val == 'play') {
+                  if (isCurrent) {
+                    AudioPlayerService.instance.togglePlayPause();
+                  } else {
+                    AudioPlayerService.instance.playSong(song);
+                  }
+                } else if (val == 'tune') {
+                  if (AudioPlayerService.instance.currentSong?.id != song.id) {
+                    AudioPlayerService.instance.playSong(song);
+                  }
+                  widget.onOpenDPSStudio();
+                } else if (val == 'remove') {
+                  AudioPlayerService.instance.removeSong(song.id);
+                }
+              },
+              itemBuilder: (context) => [
+                PopupMenuItem(
+                  value: 'play',
+                  child: Row(
+                    children: [
+                      Icon(isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded, color: AppTheme.neonCyan, size: 18),
+                      const SizedBox(width: 8),
+                      Text(isPlaying ? 'Pause Track' : 'Play Track', style: const TextStyle(fontSize: 12)),
+                    ],
+                  ),
+                ),
+                const PopupMenuItem(
+                  value: 'tune',
+                  child: Row(
+                    children: [
+                      Icon(Icons.equalizer_rounded, color: AppTheme.neonPurple, size: 18),
+                      SizedBox(width: 8),
+                      Text('Customize DPS Effect', style: TextStyle(fontSize: 12)),
+                    ],
+                  ),
+                ),
+                if (!song.isAsset)
+                  const PopupMenuItem(
+                    value: 'remove',
+                    child: Row(
+                      children: [
+                        Icon(Icons.delete_outline_rounded, color: AppTheme.neonPink, size: 18),
+                        SizedBox(width: 8),
+                        Text('Remove from Library', style: TextStyle(fontSize: 12)),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+            if (canReorder) ...[
+              const SizedBox(width: 2),
+              ReorderableDragStartListener(
+                index: idx,
+                child: const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 4),
+                  child: Icon(Icons.drag_indicator_rounded, size: 20, color: Colors.white30),
+                ),
+              ),
+            ],
+          ],
+        ),
+        onTap: () {
+          if (isCurrent) {
+            AudioPlayerService.instance.togglePlayPause();
+          } else {
+            AudioPlayerService.instance.playSong(song);
+          }
+        },
+      ),
     );
   }
 

@@ -409,6 +409,29 @@ class AudioPlayerService extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Rearranges songs in the playlist when user drags and drops
+  Future<void> reorderPlaylist(int oldIndex, int newIndex) async {
+    if (oldIndex < 0 || oldIndex >= _playlist.length) return;
+    if (newIndex < 0 || newIndex > _playlist.length) return;
+
+    if (oldIndex < newIndex) {
+      newIndex -= 1;
+    }
+
+    final currentPlayingSong = currentSong;
+    final song = _playlist.removeAt(oldIndex);
+    _playlist.insert(newIndex, song);
+
+    // Keep currentIndex pointing to the same playing song
+    if (currentPlayingSong != null) {
+      _currentIndex = _playlist.indexWhere((s) => s.id == currentPlayingSong.id);
+      if (_currentIndex == -1) _currentIndex = 0;
+    }
+
+    await _saveLocalSongs();
+    notifyListeners();
+  }
+
   /// Plays a song with the active DPS preset effect applied in real-time
   Future<void> playSong(SongItem song) async {
     final idx = _playlist.indexWhere((s) => s.id == song.id);

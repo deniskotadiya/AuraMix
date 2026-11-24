@@ -55,6 +55,12 @@ class DPSPreset {
   final double pitchShift;      // -12 to +12 semitones
   final double speed;           // 0.5 to 2.0x
   
+  // Stem & Instrument Level Isolators (-6.0 dB to +6.0 dB, 0.0 = neutral/flat)
+  final double vocalGain;  // Vocals & Lyrics / Words Presence (1kHz - 4kHz)
+  final double musicGain;  // Instruments, Guitars, Synths & Keys (250Hz - 1kHz)
+  final double bassGain;   // Rhythm, Kicks, 808s & Bass (31Hz - 125Hz)
+  final double trebleGain; // Air, Cymbals & Acoustic Ambience (8kHz - 16kHz)
+  
   final List<SongRecommendation> recommendedSongs;
   String? userReaction; // 'like', 'dislike', or null
 
@@ -80,6 +86,10 @@ class DPSPreset {
     this.reverbMix = 0.2,
     this.pitchShift = 0.0,
     this.speed = 1.0,
+    this.vocalGain = 0.0,
+    this.musicGain = 0.0,
+    this.bassGain = 0.0,
+    this.trebleGain = 0.0,
     List<SongRecommendation>? recommendedSongs,
     this.userReaction,
   }) : createdAt = createdAt ?? DateTime.now(),
@@ -108,6 +118,10 @@ class DPSPreset {
     double? reverbMix,
     double? pitchShift,
     double? speed,
+    double? vocalGain,
+    double? musicGain,
+    double? bassGain,
+    double? trebleGain,
     List<SongRecommendation>? recommendedSongs,
     String? userReaction,
   }) {
@@ -133,6 +147,10 @@ class DPSPreset {
       reverbMix: reverbMix ?? this.reverbMix,
       pitchShift: pitchShift ?? this.pitchShift,
       speed: speed ?? this.speed,
+      vocalGain: vocalGain ?? this.vocalGain,
+      musicGain: musicGain ?? this.musicGain,
+      bassGain: bassGain ?? this.bassGain,
+      trebleGain: trebleGain ?? this.trebleGain,
       recommendedSongs: recommendedSongs ?? List<SongRecommendation>.from(this.recommendedSongs),
       userReaction: userReaction ?? this.userReaction,
     );
@@ -160,6 +178,10 @@ class DPSPreset {
     'reverbMix': reverbMix,
     'pitchShift': pitchShift,
     'speed': speed,
+    'vocalGain': vocalGain,
+    'musicGain': musicGain,
+    'bassGain': bassGain,
+    'trebleGain': trebleGain,
     'recommendedSongs': recommendedSongs.map((s) => s.toJson()).toList(),
     'userReaction': userReaction,
   };
@@ -192,6 +214,10 @@ class DPSPreset {
       reverbMix: (json['reverbMix'] as num?)?.toDouble() ?? 0.2,
       pitchShift: (json['pitchShift'] as num?)?.toDouble() ?? 0.0,
       speed: (json['speed'] as num?)?.toDouble() ?? 1.0,
+      vocalGain: (json['vocalGain'] as num?)?.toDouble() ?? 0.0,
+      musicGain: (json['musicGain'] as num?)?.toDouble() ?? 0.0,
+      bassGain: (json['bassGain'] as num?)?.toDouble() ?? 0.0,
+      trebleGain: (json['trebleGain'] as num?)?.toDouble() ?? 0.0,
       recommendedSongs: (json['recommendedSongs'] as List<dynamic>?)
               ?.map((e) => SongRecommendation.fromJson(e as Map<String, dynamic>))
               .toList() ??
