@@ -7,6 +7,7 @@ import '../../core/dps_engine.dart';
 import '../../models/song_item.dart';
 import '../widgets/animated_visualizer.dart';
 import '../widgets/banner_ad_widget.dart';
+import '../widgets/acoustic_profile_selector.dart';
 import 'car_drive_mode_screen.dart';
 
 class HomePlayerScreen extends StatefulWidget {
@@ -451,6 +452,10 @@ class _HomePlayerScreenState extends State<HomePlayerScreen> with SingleTickerPr
               ),
             ),
           ),
+          const SizedBox(height: 12),
+
+          // Acoustic Output Target Selector (Earbuds, Headphones, Car, Speaker)
+          const AcousticProfileSelector(compact: true),
           const SizedBox(height: 12),
 
           // Quick DPS Preset Strip (1-tap effect switching while listening)

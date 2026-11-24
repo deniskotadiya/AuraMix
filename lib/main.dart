@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:audio_session/audio_session.dart';
+import 'package:just_audio_background/just_audio_background.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'core/app_theme.dart';
 import 'core/monetization_config.dart';
 import 'core/ad_service.dart';
 import 'core/iap_service.dart';
 import 'core/auth_service.dart';
+import 'core/dps_engine.dart';
 import 'core/audio_player_service.dart';
 import 'core/preset_repository.dart';
 import 'ui/screens/auth_gate_screen.dart';
@@ -25,6 +27,19 @@ Future<void> main() async {
     } catch (e) {
       debugPrint('[Main] Firebase init error: $e');
     }
+  }
+
+  // Initialize background audio notifications & foreground service
+  try {
+    await JustAudioBackground.init(
+      androidNotificationChannelId: 'com.squareinfosoft.auramix.channel.audio',
+      androidNotificationChannelName: 'AuraMix DSP Sound Engine',
+      androidNotificationIcon: 'mipmap/ic_launcher',
+      androidNotificationOngoing: true,
+      androidStopForegroundOnPause: true,
+    );
+  } catch (e) {
+    debugPrint('[Main] JustAudioBackground init error: $e');
   }
 
   // Audio session configuration for background & high-fidelity playback
@@ -49,6 +64,7 @@ Future<void> main() async {
   await IAPService.instance.initialize();
   await AuthService.instance.initialize();
   await AdService.instance.initialize();
+  await DPSEngine.instance.initialize();
   await AudioPlayerService.instance.initialize();
   await PresetRepository.instance.initialize();
 

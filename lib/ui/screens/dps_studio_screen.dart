@@ -7,6 +7,7 @@ import '../../core/audio_player_service.dart';
 import '../widgets/glowing_rotary_knob.dart';
 import '../widgets/premium_unlock_dialog.dart';
 import '../widgets/banner_ad_widget.dart';
+import '../widgets/acoustic_profile_selector.dart';
 import 'create_preset_screen.dart';
 
 class DPSStudioScreen extends StatelessWidget {
@@ -195,6 +196,11 @@ class DPSStudioScreen extends StatelessWidget {
                             );
                           },
                         ),
+                        const SizedBox(height: 16),
+
+                        // Acoustic Output Device Target (Earbuds, Headphones, Car, Speaker)
+                        const AcousticProfileSelector(compact: false),
+                        const SizedBox(height: 18),
 
                         // Preset Selector Carousel
                         const Text(

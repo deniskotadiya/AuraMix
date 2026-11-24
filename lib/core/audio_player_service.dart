@@ -5,6 +5,8 @@ import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:just_audio/just_audio.dart';
+import 'package:just_audio_background/just_audio_background.dart';
+import 'package:audio_session/audio_session.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/song_item.dart';
@@ -96,6 +98,19 @@ class AudioPlayerService extends ChangeNotifier {
       }
       notifyListeners();
     });
+
+    // Pause automatically when headphones / earbuds are unplugged
+    try {
+      final session = await AudioSession.instance;
+      session.becomingNoisyEventStream.listen((_) {
+        debugPrint('[AudioPlayerService] Becoming noisy: headphones unplugged, pausing audio.');
+        if (_player.playing) {
+          _player.pause();
+        }
+      });
+    } catch (e) {
+      debugPrint('[AudioPlayerService] AudioSession setup error: $e');
+    }
 
     // Sync DPS pitch and speed
     DPSEngine.instance.addListener(() {
@@ -399,11 +414,23 @@ class AudioPlayerService extends ChangeNotifier {
     final idx = _playlist.indexWhere((s) => s.id == song.id);
     if (idx != -1) _currentIndex = idx;
 
+    final mediaItem = MediaItem(
+      id: song.id,
+      album: song.album,
+      title: song.title,
+      artist: song.artist,
+      artUri: Uri.parse('asset:///assets/images/auramix_icon.png'),
+    );
+
     try {
       if (song.isAsset) {
-        await _player.setAsset(song.path);
+        await _player.setAudioSource(
+          AudioSource.asset(song.path, tag: mediaItem),
+        );
       } else {
-        await _player.setFilePath(song.path);
+        await _player.setAudioSource(
+          AudioSource.uri(Uri.file(song.path), tag: mediaItem),
+        );
       }
       await _player.play();
       notifyListeners();

@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/dps_control.dart';
+import '../models/acoustic_profile.dart';
 import 'ad_service.dart';
 
 class DPSEngine extends ChangeNotifier {
@@ -10,8 +12,61 @@ class DPSEngine extends ChangeNotifier {
   DPSPreset _activePreset = defaultPresets.first;
   bool _dpsEnabled = true;
 
+  // Active Acoustic Output Profile (Earbuds/TWS, Over-Ear Headphones, Car Cockpit, Speaker)
+  AcousticProfileType _activeDeviceProfile = AcousticProfileType.earbuds;
+
   DPSPreset get activePreset => _activePreset;
   bool get dpsEnabled => _dpsEnabled;
+  AcousticProfileType get activeDeviceProfileType => _activeDeviceProfile;
+  AcousticProfile get activeDeviceProfile => AcousticProfile.getProfile(_activeDeviceProfile);
+
+  Future<void> initialize() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final savedType = prefs.getString('auramix_acoustic_profile');
+      if (savedType != null) {
+        final match = AcousticProfileType.values.firstWhere(
+          (e) => e.name == savedType,
+          orElse: () => AcousticProfileType.earbuds,
+        );
+        _activeDeviceProfile = match;
+        _applyDeviceProfile(match, notify: false);
+      } else {
+        // Default to earbuds optimization
+        _applyDeviceProfile(AcousticProfileType.earbuds, notify: false);
+      }
+    } catch (e) {
+      debugPrint('[DPSEngine] initialize error: $e');
+    }
+  }
+
+  void setAcousticProfile(AcousticProfileType type) {
+    _activeDeviceProfile = type;
+    _applyDeviceProfile(type, notify: true);
+
+    SharedPreferences.getInstance().then((prefs) {
+      prefs.setString('auramix_acoustic_profile', type.name);
+    }).catchError((_) {});
+
+    AdService.instance.recordUserAction(reason: 'Acoustic Profile Changed to ${type.name}');
+  }
+
+  void _applyDeviceProfile(AcousticProfileType type, {bool notify = true}) {
+    final profile = AcousticProfile.getProfile(type);
+    _activePreset = _activePreset.copyWith(
+      eqBands: List<double>.from(profile.eqBands),
+      bassBoost: profile.bassBoost,
+      surround3D: profile.surround3D,
+      clarity: profile.clarity,
+      tubeWarmth: profile.tubeWarmth,
+      compressor: profile.compressor,
+      reverbType: profile.reverbType,
+      reverbMix: profile.reverbMix,
+    );
+    if (notify) {
+      notifyListeners();
+    }
+  }
 
   void toggleDPSEnabled() {
     _dpsEnabled = !_dpsEnabled;
