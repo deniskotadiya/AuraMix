@@ -17,7 +17,7 @@ class AuthService {
 
   Future<void> initialize() async {
     final prefs = await SharedPreferences.getInstance();
-    final isVip = IAPService.instance.isVip;
+    final isVip = MonetizationConfig.isPremium || IAPService.instance.isVip;
 
     if (MonetizationConfig.firebaseEnabled) {
       try {
@@ -71,7 +71,7 @@ class AuthService {
           uid: credential.user!.uid,
           displayName: displayName ?? 'Audiophile Driver',
           email: credential.user!.email ?? email,
-          isVip: IAPService.instance.isVip,
+          isVip: MonetizationConfig.isPremium || IAPService.instance.isVip,
           sessionUnlockedControls: _sessionUnlockedControls,
         );
       } else {
@@ -83,7 +83,7 @@ class AuthService {
           uid: credential.user!.uid,
           displayName: credential.user?.displayName ?? 'Audiophile Driver',
           email: credential.user!.email ?? email,
-          isVip: IAPService.instance.isVip,
+          isVip: MonetizationConfig.isPremium || IAPService.instance.isVip,
           sessionUnlockedControls: _sessionUnlockedControls,
         );
       }
@@ -101,7 +101,7 @@ class AuthService {
         uid: uid,
         displayName: name,
         email: email.trim(),
-        isVip: IAPService.instance.isVip,
+        isVip: MonetizationConfig.isPremium || IAPService.instance.isVip,
         sessionUnlockedControls: _sessionUnlockedControls,
       );
     }
@@ -121,7 +121,7 @@ class AuthService {
       uid: uid,
       displayName: guestName,
       email: guestEmail,
-      isVip: IAPService.instance.isVip,
+      isVip: MonetizationConfig.isPremium || IAPService.instance.isVip,
       sessionUnlockedControls: _sessionUnlockedControls,
     );
   }
@@ -136,7 +136,7 @@ class AuthService {
   }
 
   bool isControlUnlocked(String controlKey) {
-    if (IAPService.instance.isVip) return true;
+    if (MonetizationConfig.isPremium || IAPService.instance.isVip) return true;
     return _sessionUnlockedControls.contains(controlKey);
   }
 

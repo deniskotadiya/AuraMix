@@ -306,7 +306,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        '• AdMob Test Ads: ${MonetizationConfig.useTestAds ? "Active (Safe testing)" : "Production IDs"}\n• Firebase Integration: ${MonetizationConfig.firebaseEnabled ? "Enabled" : "Demo local persistence (toggle in MonetizationConfig)"}\n• Audio Engine: just_audio + DSP multi-band EQ\n• Flutter SDK: 3.47.x (Quail compatible)',
+                        '• App-wide isPremium Flag: ${MonetizationConfig.isPremium ? "TRUE (Full Access Unlocked)" : "false"}\n• AdMob Test Ads: ${MonetizationConfig.useTestAds ? "Active (Safe testing)" : "Production IDs"}\n• Firebase Integration: ${MonetizationConfig.firebaseEnabled ? "Enabled" : "Demo local persistence (toggle in MonetizationConfig)"}\n• Audio Engine: just_audio + DSP multi-band EQ\n• Flutter SDK: 3.47.x (Quail compatible)',
                         style: const TextStyle(fontSize: 11, color: Colors.white60, height: 1.4),
                       ),
                     ],

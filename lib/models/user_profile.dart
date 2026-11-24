@@ -1,3 +1,5 @@
+import '../core/monetization_config.dart';
+
 class UserProfile {
   final String uid;
   final String displayName;
@@ -38,7 +40,7 @@ class UserProfile {
   }
 
   bool isControlUnlocked(String controlKey) {
-    if (isVip) return true;
+    if (MonetizationConfig.isPremium || isVip) return true;
     return sessionUnlockedControls.contains(controlKey);
   }
 

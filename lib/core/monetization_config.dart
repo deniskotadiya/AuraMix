@@ -4,6 +4,17 @@ import 'dart:io';
 /// Includes Google AdMob IDs (configured with official Google Test IDs by default),
 /// RevenueCat / Store In-App Purchase identifiers, and Firebase toggles.
 class MonetizationConfig {
+  /// MASTER DEVELOPER OVERRIDE FLAG:
+  /// Set [isPremium] to `true` to unlock all features across the entire app from code side.
+  /// When `true`:
+  /// - Full access to all DSP dials & presets (Tube Warmth, Compressor, 3D Spatializer, Cathedral Reverb, etc.)
+  /// - All ads (Banner, Interstitial, Rewarded) are disabled
+  /// - No network check popups when tweaking sound or playing music (full offline freedom)
+  /// - VIP Pro status enabled everywhere in the app
+  ///
+  /// Set to `false` for standard store monetization with IAP and AdMob ads.
+  static const bool isPremium = true;
+
   // Toggle to switch between local persistent storage mode and Firebase production mode
   static const bool firebaseEnabled = true;
 

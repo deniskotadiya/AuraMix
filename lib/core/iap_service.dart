@@ -10,17 +10,17 @@ class IAPService {
   bool _initialized = false;
   bool _isVip = false;
 
-  final ValueNotifier<bool> vipStatusNotifier = ValueNotifier<bool>(false);
+  final ValueNotifier<bool> vipStatusNotifier = ValueNotifier<bool>(MonetizationConfig.isPremium);
 
-  bool get isVip => _isVip;
+  bool get isVip => MonetizationConfig.isPremium || _isVip;
 
   Future<void> initialize() async {
     if (_initialized) return;
 
     // Load persisted local VIP status first
     final prefs = await SharedPreferences.getInstance();
-    _isVip = prefs.getBool('auramix_is_vip') ?? false;
-    vipStatusNotifier.value = _isVip;
+    _isVip = MonetizationConfig.isPremium || (prefs.getBool('auramix_is_vip') ?? false);
+    vipStatusNotifier.value = isVip;
 
     try {
       // If RevenueCat key is configured, initialize RevenueCat
@@ -106,7 +106,7 @@ class IAPService {
 
   Future<void> setVip(bool vip) async {
     _isVip = vip;
-    vipStatusNotifier.value = vip;
+    vipStatusNotifier.value = isVip;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('auramix_is_vip', vip);
   }
