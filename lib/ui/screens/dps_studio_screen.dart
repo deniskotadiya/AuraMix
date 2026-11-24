@@ -588,9 +588,9 @@ class DPSStudioScreen extends StatelessWidget {
             ),
             child: Slider(
               value: value,
-              min: -6.0,
-              max: 6.0,
-              divisions: 24,
+              min: -12.0,
+              max: 12.0,
+              divisions: 48,
               onChanged: onChanged,
             ),
           ),

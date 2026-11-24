@@ -11,6 +11,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/song_item.dart';
 import 'dps_engine.dart';
+import 'audio_fx_bridge.dart';
 import 'ad_service.dart';
 
 class AudioPlayerService extends ChangeNotifier {
@@ -112,7 +113,14 @@ class AudioPlayerService extends ChangeNotifier {
       debugPrint('[AudioPlayerService] AudioSession setup error: $e');
     }
 
-    // Sync DPS pitch and speed
+    // Connect real-time hardware DSP Audio Effects (Equalizer, BassBoost, Virtualizer, Loudness)
+    _player.androidAudioSessionIdStream.listen((sessionId) {
+      if (sessionId != null) {
+        AudioFxBridge.instance.attachToSession(sessionId);
+      }
+    });
+
+    // Sync DPS pitch, speed, and real-time DSP audio effects
     DPSEngine.instance.addListener(() {
       final active = DPSEngine.instance.activePreset;
       if (DPSEngine.instance.dpsEnabled) {
@@ -126,6 +134,9 @@ class AudioPlayerService extends ChangeNotifier {
           _player.setPitch(1.0);
         } catch (_) {}
       }
+
+      // Sync hardware Equalizer, BassBoost, Virtualizer, and Stem filters in real-time
+      AudioFxBridge.instance.syncEffects();
     });
 
     _startVisualizerLoop();
@@ -456,6 +467,9 @@ class AudioPlayerService extends ChangeNotifier {
         );
       }
       await _player.play();
+      if (_player.androidAudioSessionId != null) {
+        AudioFxBridge.instance.attachToSession(_player.androidAudioSessionId);
+      }
       notifyListeners();
       AdService.instance.recordUserAction(reason: 'Audio Track Changed');
     } catch (e) {

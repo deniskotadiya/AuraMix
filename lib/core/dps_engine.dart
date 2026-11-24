@@ -145,25 +145,25 @@ class DPSEngine extends ChangeNotifier {
 
   // Stem & Instrument Level Isolators
   void setVocalGain(double db) {
-    _activePreset = _activePreset.copyWith(vocalGain: db.clamp(-6.0, 6.0));
+    _activePreset = _activePreset.copyWith(vocalGain: db.clamp(-12.0, 12.0));
     notifyListeners();
     AdService.instance.recordUserAction(reason: 'Vocal / Word Level Adjusted');
   }
 
   void setMusicGain(double db) {
-    _activePreset = _activePreset.copyWith(musicGain: db.clamp(-6.0, 6.0));
+    _activePreset = _activePreset.copyWith(musicGain: db.clamp(-12.0, 12.0));
     notifyListeners();
     AdService.instance.recordUserAction(reason: 'Music / Instrument Level Adjusted');
   }
 
   void setBassGain(double db) {
-    _activePreset = _activePreset.copyWith(bassGain: db.clamp(-6.0, 6.0));
+    _activePreset = _activePreset.copyWith(bassGain: db.clamp(-12.0, 12.0));
     notifyListeners();
     AdService.instance.recordUserAction(reason: 'Bass / Rhythm Level Adjusted');
   }
 
   void setTrebleGain(double db) {
-    _activePreset = _activePreset.copyWith(trebleGain: db.clamp(-6.0, 6.0));
+    _activePreset = _activePreset.copyWith(trebleGain: db.clamp(-12.0, 12.0));
     notifyListeners();
     AdService.instance.recordUserAction(reason: 'Treble / Air Level Adjusted');
   }
