@@ -39,63 +39,69 @@ class AudioFxBridge {
 
     _channel.invokeMethod('setEnabled', {'enabled': true}).catchError((_) {});
 
-    // 1. Calculate Stem Equalization with full Isolator kill-switch capability
+    // 1. Calculate DJ 3-Band Frequency Kill Isolators & Karaoke Processing
     // Range is -1500 mB (-15 dB) to +1500 mB (+15 dB)
-    // Paired with DynamicsProcessing (-60 dB brickwall), this makes any stem completely unlistenable when killed.
-    final isVocalMuted = active.vocalGain <= -10.0;
-    final isBassMuted = active.bassGain <= -10.0;
-    final isMusicMuted = active.musicGain <= -10.0;
-    final isTrebleMuted = active.trebleGain <= -10.0;
+    // Paired with DynamicsProcessing (-60 dB brickwall), KILL completely silences that band.
+    final isLowKilled = active.bassGain <= -11.0;
+    final isMidKilled = active.musicGain <= -11.0;
+    final isHighKilled = active.trebleGain <= -11.0;
+    final isKaraoke = active.karaokeEnabled;
 
-    // Band 0 (~60 Hz: Sub-bass, Kick, 808s)
+    // Band 0 (~60 Hz: Sub-bass, Deep Kick, 808s)
     int band0;
-    if (isBassMuted) {
-      band0 = -1500; // Total kill of sub-bass
+    if (isLowKilled) {
+      band0 = -1500; // 100% kill of sub-bass
     } else if (active.bassGain < 0) {
       band0 = ((active.eqBands[0] * 60) + (active.bassGain * 125)).round().clamp(-1500, 1500);
     } else {
-      band0 = ((active.eqBands[0] * 60) + (active.bassGain * 110) + (active.bassBoost * 400)).round().clamp(-1500, 1500);
+      band0 = ((active.eqBands[0] * 60) + (active.bassGain * 115) + (active.bassBoost * 400)).round().clamp(-1500, 1500);
     }
 
-    // Band 1 (~230 Hz: Bass punch, lower rhythm & vocal chest resonance)
+    // Band 1 (~230 Hz: Bass punch, Low-mids & Rhythm)
     int band1;
-    if (isBassMuted && (isVocalMuted || isMusicMuted)) {
-      band1 = -1500; // Complete kill
-    } else if (isBassMuted) {
-      band1 = isMusicMuted ? -1500 : -1400;
-    } else if (isVocalMuted && isMusicMuted) {
-      band1 = -1300 + (active.bassGain * 40).round();
+    if (isLowKilled) {
+      band1 = -1500; // 100% kill of bass punch
+    } else if (active.bassGain < 0) {
+      band1 = ((active.eqBands[2] * 70) + (active.bassGain * 125)).round().clamp(-1500, 1500);
     } else {
-      final bassContrib = active.bassGain * 80;
-      final musicContrib = active.musicGain * 60;
-      final vocalContrib = active.vocalGain < 0 ? active.vocalGain * 50 : 0.0;
-      band1 = ((active.eqBands[2] * 70) + bassContrib + musicContrib + vocalContrib).round().clamp(-1500, 1500);
+      final bassContrib = active.bassGain * 100;
+      final midContrib = active.musicGain * 30;
+      band1 = ((active.eqBands[2] * 70) + bassContrib + midContrib).round().clamp(-1500, 1500);
     }
 
-    // Band 2 (~910 Hz: Music body & human vocal formant)
+    // Band 2 (~910 Hz: Mid-body, Vocals, Guitars, Keys)
     int band2;
-    if (isVocalMuted || isMusicMuted) {
-      band2 = -1500; // Complete kill of vocal body and harmonic instruments
+    if (isMidKilled) {
+      band2 = -1500; // 100% kill of midrange
+    } else if (isKaraoke) {
+      band2 = -1500; // Notch out lead vocal formant for karaoke
+    } else if (active.musicGain < 0) {
+      band2 = ((active.eqBands[4] * 70) + (active.musicGain * 125)).round().clamp(-1500, 1500);
     } else {
-      final vocalContrib = active.vocalGain * 120;
-      final musicContrib = active.musicGain * 80;
-      band2 = ((active.eqBands[4] * 70) + vocalContrib + musicContrib).round().clamp(-1500, 1500);
+      final midContrib = active.musicGain * 120;
+      band2 = ((active.eqBands[4] * 70) + midContrib).round().clamp(-1500, 1500);
     }
 
-    // Band 3 (~3.6 kHz: Words, lyrics, vocal articulation & snare attack)
+    // Band 3 (~3.6 kHz: Vocal presence, Snare attack, High-mids)
     int band3;
-    if (isVocalMuted || isTrebleMuted) {
-      band3 = -1500; // Complete kill of speech articulation / lyrics / words
+    if (isMidKilled && isHighKilled) {
+      band3 = -1500;
+    } else if (isMidKilled) {
+      band3 = isHighKilled ? -1500 : -1400;
+    } else if (isHighKilled) {
+      band3 = -1200 + (active.musicGain * 30).round();
+    } else if (isKaraoke) {
+      band3 = -1000 + (active.trebleGain * 40).round();
     } else {
-      final vocalContrib = active.vocalGain * 130;
-      final trebleContrib = active.trebleGain * 60;
-      band3 = ((active.eqBands[6] * 70) + vocalContrib + trebleContrib + (active.clarity * 200)).round().clamp(-1500, 1500);
+      final midContrib = active.musicGain * 70;
+      final highContrib = active.trebleGain * 70;
+      band3 = ((active.eqBands[6] * 70) + midContrib + highContrib + (active.clarity * 150)).round().clamp(-1500, 1500);
     }
 
-    // Band 4 (~14 kHz: Treble, air, cymbals, acoustic shimmer)
+    // Band 4 (~14 kHz: Highs, Air, Cymbals, Shimmer)
     int band4;
-    if (isTrebleMuted || (isMusicMuted && active.trebleGain <= 0)) {
-      band4 = -1500; // Complete kill of cymbals, shimmer & treble air
+    if (isHighKilled) {
+      band4 = -1500; // 100% kill of highs
     } else if (active.trebleGain < 0) {
       band4 = ((active.eqBands[9] * 70) + (active.trebleGain * 125)).round().clamp(-1500, 1500);
     } else {
@@ -108,20 +114,18 @@ class AudioFxBridge {
 
     // 2. Hardware BassBoost strength (0 to 1000)
     int bassFactor;
-    if (isBassMuted || active.bassGain <= -6.0) {
+    if (isLowKilled || active.bassGain <= -6.0) {
       bassFactor = 0; // Completely off
     } else {
       bassFactor = ((active.bassBoost * 0.70 + (active.bassGain > 0 ? (active.bassGain / 12.0) * 0.30 : 0.0)) * 1000).round().clamp(0, 1000);
     }
     _channel.invokeMethod('setBassBoost', {'strength': bassFactor}).catchError((_) {});
 
-    // 3. Hardware Virtualizer (3D Spatializer)
-    // When vocal is muted, Virtualizer phase difference cancels center-panned vocals!
+    // 3. Hardware Virtualizer (3D Spatializer & Karaoke Vocal Cancellation)
     int virtualizerFactor;
-    if (isVocalMuted) {
+    if (isKaraoke) {
+      // Maximized phase cancellation to subtract center-panned vocals
       virtualizerFactor = 1000;
-    } else if (isMusicMuted) {
-      virtualizerFactor = 0; // Collapse stereo field
     } else {
       virtualizerFactor = (active.surround3D * 1000).round().clamp(0, 1000);
     }

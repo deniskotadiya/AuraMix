@@ -338,103 +338,204 @@ class DPSStudioScreen extends StatelessWidget {
                         ),
                         const SizedBox(height: 22),
 
-                        // Stem & Instrument Sound Isolation (Vocals, Music, Beat, Air)
+                        // DJ 3-Band Frequency Kill Isolators & Karaoke Console
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Text(
-                              'STEM & INSTRUMENT EQUALIZATION',
-                              style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1.2, color: AppTheme.neonCyan),
+                            const Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'DJ 3-BAND FREQUENCY ISOLATOR',
+                                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1.2, color: AppTheme.neonCyan),
+                                ),
+                                SizedBox(height: 2),
+                                Text(
+                                  'Pioneer-grade real-time frequency kill-switches',
+                                  style: TextStyle(fontSize: 9.5, color: Colors.white38),
+                                ),
+                              ],
                             ),
                             TextButton(
-                              onPressed: () => dps.resetStems(),
-                              child: const Text('Reset All', style: TextStyle(color: Colors.white54, fontSize: 11)),
+                              onPressed: () => dps.resetIsolators(),
+                              child: const Text('Reset Flat', style: TextStyle(color: Colors.white54, fontSize: 11)),
                             ),
                           ],
                         ),
-                        // Quick Stem Isolation Presets
+                        const SizedBox(height: 8),
+
+                        // Karaoke Center-Vocal Eliminator Banner
+                        Container(
+                          margin: const EdgeInsets.only(bottom: 10),
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: active.karaokeEnabled
+                                  ? [AppTheme.neonPurple.withAlpha(60), const Color(0xFF1B1633)]
+                                  : [const Color(0xFF14172B), const Color(0xFF0F111E)],
+                            ),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                              color: active.karaokeEnabled ? AppTheme.neonPurple : Colors.white12,
+                              width: active.karaokeEnabled ? 1.5 : 0.8,
+                            ),
+                            boxShadow: [
+                              if (active.karaokeEnabled)
+                                BoxShadow(
+                                  color: AppTheme.neonPurple.withAlpha(80),
+                                  blurRadius: 10,
+                                  spreadRadius: 1,
+                                ),
+                            ],
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                active.karaokeEnabled ? Icons.mic_off_rounded : Icons.mic_external_on_rounded,
+                                color: active.karaokeEnabled ? AppTheme.neonPurple : Colors.white70,
+                                size: 22,
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        const Text(
+                                          'KARAOKE VOCAL ELIMINATOR',
+                                          style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Colors.white, letterSpacing: 0.8),
+                                        ),
+                                        if (active.karaokeEnabled) ...[
+                                          const SizedBox(width: 6),
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                                            decoration: BoxDecoration(
+                                              color: AppTheme.neonPurple.withAlpha(40),
+                                              borderRadius: BorderRadius.circular(4),
+                                            ),
+                                            child: const Text('ACTIVE', style: TextStyle(fontSize: 8.5, fontWeight: FontWeight.bold, color: AppTheme.neonPurple)),
+                                          ),
+                                        ],
+                                      ],
+                                    ),
+                                    const Text(
+                                      'Phase-cancels center-panned lead vocals for sing-along',
+                                      style: TextStyle(fontSize: 10, color: Colors.white54),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Switch(
+                                value: active.karaokeEnabled,
+                                activeThumbColor: AppTheme.neonPurple,
+                                activeTrackColor: AppTheme.neonPurple.withAlpha(90),
+                                onChanged: (v) {
+                                  HapticFeedback.mediumImpact();
+                                  dps.setKaraokeEnabled(v);
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        // Quick DJ Action Presets
                         SingleChildScrollView(
                           scrollDirection: Axis.horizontal,
                           padding: const EdgeInsets.only(bottom: 8),
                           child: Row(
                             children: [
                               _buildStemPresetChip(
-                                label: 'Karaoke (Mute Vocals)',
-                                icon: Icons.mic_off_rounded,
-                                isSelected: active.vocalGain <= -10.0 && active.musicGain >= 0.0,
-                                onTap: () {
-                                  HapticFeedback.mediumImpact();
-                                  dps.setVocalGain(-12.0);
-                                  dps.setMusicGain(0.0);
-                                  dps.setBassGain(0.0);
-                                  dps.setTrebleGain(0.0);
-                                },
-                              ),
-                              const SizedBox(width: 6),
-                              _buildStemPresetChip(
-                                label: 'Acapella (Vocals Only)',
-                                icon: Icons.record_voice_over_rounded,
-                                isSelected: active.vocalGain >= 0.0 && active.musicGain <= -10.0 && active.bassGain <= -10.0,
-                                onTap: () {
-                                  HapticFeedback.mediumImpact();
-                                  dps.setVocalGain(4.0);
-                                  dps.setMusicGain(-12.0);
-                                  dps.setBassGain(-12.0);
-                                  dps.setTrebleGain(-12.0);
-                                },
-                              ),
-                              const SizedBox(width: 6),
-                              _buildStemPresetChip(
-                                label: 'Bass Cannon',
+                                label: 'Club Bass Drop',
                                 icon: Icons.speaker_group_rounded,
-                                isSelected: active.bassGain >= 8.0,
+                                isSelected: active.bassGain >= 8.0 && active.musicGain <= -6.0,
                                 onTap: () {
                                   HapticFeedback.mediumImpact();
-                                  dps.setBassGain(12.0);
-                                  dps.setVocalGain(0.0);
-                                  dps.setMusicGain(2.0);
-                                  dps.setTrebleGain(-4.0);
+                                  dps.setLowGain(10.0);
+                                  dps.setMidGain(-12.0);
+                                  dps.setHighGain(-8.0);
+                                },
+                              ),
+                              const SizedBox(width: 6),
+                              _buildStemPresetChip(
+                                label: 'Radio Voice Only',
+                                icon: Icons.radio_rounded,
+                                isSelected: active.bassGain <= -11.0 && active.trebleGain <= -11.0,
+                                onTap: () {
+                                  HapticFeedback.mediumImpact();
+                                  dps.setLowGain(-12.0);
+                                  dps.setMidGain(3.0);
+                                  dps.setHighGain(-12.0);
+                                },
+                              ),
+                              const SizedBox(width: 6),
+                              _buildStemPresetChip(
+                                label: 'Karaoke Sing-Along',
+                                icon: Icons.mic_off_rounded,
+                                isSelected: active.karaokeEnabled,
+                                onTap: () {
+                                  HapticFeedback.mediumImpact();
+                                  dps.setKaraokeEnabled(!active.karaokeEnabled);
+                                },
+                              ),
+                              const SizedBox(width: 6),
+                              _buildStemPresetChip(
+                                label: 'All Flat (0 dB)',
+                                icon: Icons.restart_alt_rounded,
+                                isSelected: active.bassGain == 0.0 && active.musicGain == 0.0 && active.trebleGain == 0.0,
+                                onTap: () {
+                                  HapticFeedback.mediumImpact();
+                                  dps.resetIsolators();
                                 },
                               ),
                             ],
                           ),
                         ),
                         const SizedBox(height: 6),
+
+                        // 3-Band DJ Kill Isolator Sliders
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                           decoration: AppTheme.glassBoxDecoration(radius: 16),
                           child: Column(
                             children: [
-                              _buildStemRow(
-                                icon: Icons.record_voice_over_rounded,
-                                label: 'Words & Vocals',
-                                value: active.vocalGain,
-                                color: AppTheme.neonPurple,
-                                onChanged: (v) => dps.setVocalGain(v),
-                              ),
-                              const Divider(color: Colors.white10, height: 16),
-                              _buildStemRow(
-                                icon: Icons.music_note_rounded,
-                                label: 'Music & Harmony',
-                                value: active.musicGain,
-                                color: AppTheme.neonCyan,
-                                onChanged: (v) => dps.setMusicGain(v),
-                              ),
-                              const Divider(color: Colors.white10, height: 16),
-                              _buildStemRow(
+                              _buildDJIsolatorRow(
                                 icon: Icons.album_rounded,
-                                label: 'Bass & Rhythm / Beat',
+                                label: 'LOW ISOLATOR (BASS & 808s)',
+                                freqRange: 'Sub-bass, Kicks, Bassline (< 300 Hz)',
                                 value: active.bassGain,
                                 color: AppTheme.carNeonGreen,
-                                onChanged: (v) => dps.setBassGain(v),
+                                onChanged: (v) => dps.setLowGain(v),
+                                onKillToggle: () {
+                                  HapticFeedback.heavyImpact();
+                                  dps.toggleLowKill();
+                                },
                               ),
                               const Divider(color: Colors.white10, height: 16),
-                              _buildStemRow(
+                              _buildDJIsolatorRow(
+                                icon: Icons.graphic_eq_rounded,
+                                label: 'MID ISOLATOR (VOCALS & GUITARS)',
+                                freqRange: 'Lead vocals, Guitars, Keys (300 Hz - 3.5 kHz)',
+                                value: active.musicGain,
+                                color: AppTheme.neonCyan,
+                                onChanged: (v) => dps.setMidGain(v),
+                                onKillToggle: () {
+                                  HapticFeedback.heavyImpact();
+                                  dps.toggleMidKill();
+                                },
+                              ),
+                              const Divider(color: Colors.white10, height: 16),
+                              _buildDJIsolatorRow(
                                 icon: Icons.auto_awesome_rounded,
-                                label: 'Treble & Shimmer',
+                                label: 'HIGH ISOLATOR (TREBLE & AIR)',
+                                freqRange: 'Cymbals, Snare snap, Shimmer (> 3.5 kHz)',
                                 value: active.trebleGain,
                                 color: AppTheme.carAmber,
-                                onChanged: (v) => dps.setTrebleGain(v),
+                                onChanged: (v) => dps.setHighGain(v),
+                                onKillToggle: () {
+                                  HapticFeedback.heavyImpact();
+                                  dps.toggleHighKill();
+                                },
                               ),
                             ],
                           ),
@@ -635,26 +736,28 @@ class DPSStudioScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildStemRow({
+  Widget _buildDJIsolatorRow({
     required IconData icon,
     required String label,
+    required String freqRange,
     required double value,
     required Color color,
     required ValueChanged<double> onChanged,
+    required VoidCallback onKillToggle,
   }) {
-    final isMuted = value <= -11.0;
+    final isKilled = value <= -11.0;
     final isMax = value >= 11.0;
 
     String statusText;
     Color statusColor;
-    if (isMuted) {
-      statusText = 'MUTED (UNLISTENABLE)';
+    if (isKilled) {
+      statusText = 'KILLED (-∞ dB)';
       statusColor = Colors.redAccent;
     } else if (isMax) {
-      statusText = 'MAX BOOST';
+      statusText = 'MAX BOOST (+12 dB)';
       statusColor = AppTheme.carNeonGreen;
     } else if (value.abs() < 0.5) {
-      statusText = 'BALANCED (0 dB)';
+      statusText = 'FLAT (0 dB)';
       statusColor = Colors.white70;
     } else {
       statusText = '${value >= 0 ? "+" : ""}${value.toStringAsFixed(1)} dB';
@@ -666,17 +769,32 @@ class DPSStudioScreen extends StatelessWidget {
       children: [
         Row(
           children: [
-            Icon(icon, size: 16, color: isMuted ? Colors.white30 : color),
+            Icon(icon, size: 16, color: isKilled ? Colors.redAccent : color),
             const SizedBox(width: 8),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                color: isMuted ? Colors.white54 : Colors.white,
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.bold,
+                      color: isKilled ? Colors.white54 : Colors.white,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  Text(
+                    freqRange,
+                    style: const TextStyle(fontSize: 9.5, color: Colors.white38),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
               ),
             ),
-            const Spacer(),
+            const SizedBox(width: 6),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
               decoration: BoxDecoration(
@@ -686,29 +804,40 @@ class DPSStudioScreen extends StatelessWidget {
               ),
               child: Text(
                 statusText,
-                style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: statusColor),
+                style: TextStyle(fontSize: 8.5, fontWeight: FontWeight.bold, color: statusColor),
               ),
             ),
-            const SizedBox(width: 6),
+            const SizedBox(width: 8),
+            // Dedicated DJ KILL button with glowing neon border
             InkWell(
               borderRadius: BorderRadius.circular(6),
-              onTap: () {
-                HapticFeedback.lightImpact();
-                onChanged(isMuted ? 0.0 : -12.0);
-              },
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              onTap: onKillToggle,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 150),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: isMuted ? Colors.redAccent.withAlpha(40) : Colors.white10,
+                  color: isKilled ? Colors.redAccent : Colors.redAccent.withAlpha(25),
                   borderRadius: BorderRadius.circular(6),
-                  border: Border.all(color: isMuted ? Colors.redAccent : Colors.white24),
+                  border: Border.all(
+                    color: Colors.redAccent,
+                    width: isKilled ? 1.5 : 0.8,
+                  ),
+                  boxShadow: [
+                    if (isKilled)
+                      BoxShadow(
+                        color: Colors.redAccent.withAlpha(120),
+                        blurRadius: 6,
+                        spreadRadius: 1,
+                      ),
+                  ],
                 ),
                 child: Text(
-                  isMuted ? 'UNMUTE' : 'MUTE',
+                  isKilled ? 'KILLED' : 'KILL',
                   style: TextStyle(
-                    fontSize: 9,
-                    fontWeight: FontWeight.bold,
-                    color: isMuted ? Colors.redAccent : Colors.white70,
+                    fontSize: 9.5,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.8,
+                    color: isKilled ? Colors.white : Colors.redAccent,
                   ),
                 ),
               ),
@@ -719,9 +848,9 @@ class DPSStudioScreen extends StatelessWidget {
           data: SliderThemeData(
             trackHeight: 3.5,
             thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
-            activeTrackColor: isMuted ? Colors.white24 : color,
+            activeTrackColor: isKilled ? Colors.white24 : color,
             inactiveTrackColor: Colors.white12,
-            thumbColor: isMuted ? Colors.redAccent : Colors.white,
+            thumbColor: isKilled ? Colors.redAccent : Colors.white,
           ),
           child: Slider(
             value: value,

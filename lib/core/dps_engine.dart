@@ -143,41 +143,73 @@ class DPSEngine extends ChangeNotifier {
     AdService.instance.recordUserAction(reason: 'Speed Adjusted');
   }
 
-  // Stem & Instrument Level Isolators
-  void setVocalGain(double db) {
-    _activePreset = _activePreset.copyWith(vocalGain: db.clamp(-12.0, 12.0));
-    notifyListeners();
-    AdService.instance.recordUserAction(reason: 'Vocal / Word Level Adjusted');
-  }
-
-  void setMusicGain(double db) {
-    _activePreset = _activePreset.copyWith(musicGain: db.clamp(-12.0, 12.0));
-    notifyListeners();
-    AdService.instance.recordUserAction(reason: 'Music / Instrument Level Adjusted');
-  }
-
-  void setBassGain(double db) {
+  // DJ 3-Band Frequency Kill Isolators (-12.0 dB to +12.0 dB, with -12.0 dB = FULL BRICKWALL KILL)
+  void setLowGain(double db) {
     _activePreset = _activePreset.copyWith(bassGain: db.clamp(-12.0, 12.0));
     notifyListeners();
-    AdService.instance.recordUserAction(reason: 'Bass / Rhythm Level Adjusted');
+    AdService.instance.recordUserAction(reason: 'Low Isolator Adjusted');
   }
 
-  void setTrebleGain(double db) {
+  void toggleLowKill() {
+    final isKilled = _activePreset.bassGain <= -11.0;
+    setLowGain(isKilled ? 0.0 : -12.0);
+  }
+
+  void setMidGain(double db) {
+    _activePreset = _activePreset.copyWith(musicGain: db.clamp(-12.0, 12.0));
+    notifyListeners();
+    AdService.instance.recordUserAction(reason: 'Mid Isolator Adjusted');
+  }
+
+  void toggleMidKill() {
+    final isKilled = _activePreset.musicGain <= -11.0;
+    setMidGain(isKilled ? 0.0 : -12.0);
+  }
+
+  void setHighGain(double db) {
     _activePreset = _activePreset.copyWith(trebleGain: db.clamp(-12.0, 12.0));
     notifyListeners();
-    AdService.instance.recordUserAction(reason: 'Treble / Air Level Adjusted');
+    AdService.instance.recordUserAction(reason: 'High Isolator Adjusted');
   }
 
-  void resetStems() {
+  void toggleHighKill() {
+    final isKilled = _activePreset.trebleGain <= -11.0;
+    setHighGain(isKilled ? 0.0 : -12.0);
+  }
+
+  // Dedicated Karaoke Vocal Eliminator (Center-Channel Phase Cancellation)
+  void toggleKaraoke() {
+    _activePreset = _activePreset.copyWith(karaokeEnabled: !_activePreset.karaokeEnabled);
+    notifyListeners();
+    AdService.instance.recordUserAction(reason: 'Karaoke Vocal Canceler Toggled');
+  }
+
+  void setKaraokeEnabled(bool enabled) {
+    if (_activePreset.karaokeEnabled != enabled) {
+      _activePreset = _activePreset.copyWith(karaokeEnabled: enabled);
+      notifyListeners();
+      AdService.instance.recordUserAction(reason: 'Karaoke Vocal Canceler Set');
+    }
+  }
+
+  void resetIsolators() {
     _activePreset = _activePreset.copyWith(
-      vocalGain: 0.0,
-      musicGain: 0.0,
       bassGain: 0.0,
+      musicGain: 0.0,
       trebleGain: 0.0,
+      vocalGain: 0.0,
+      karaokeEnabled: false,
     );
     notifyListeners();
-    AdService.instance.recordUserAction(reason: 'Stems Reset');
+    AdService.instance.recordUserAction(reason: 'DJ Isolators Reset');
   }
+
+  // Legacy stem aliases
+  void setVocalGain(double db) => setMidGain(db);
+  void setMusicGain(double db) => setMidGain(db);
+  void setBassGain(double db) => setLowGain(db);
+  void setTrebleGain(double db) => setHighGain(db);
+  void resetStems() => resetIsolators();
 
   static const List<String> eqFrequencies = [
     '31Hz',

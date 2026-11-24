@@ -156,11 +156,10 @@ class AudioPlayerService extends ChangeNotifier {
           _player.setPitch(pow(2.0, active.pitchShift / 12.0).toDouble());
         } catch (_) {}
 
-        // Master brickwall mute if all stems are turned down/muted to unlistenable
-        if (active.vocalGain <= -10.0 &&
-            active.musicGain <= -10.0 &&
-            active.bassGain <= -10.0 &&
-            active.trebleGain <= -10.0) {
+        // Master brickwall mute if all 3 DJ isolator bands are killed
+        if (active.bassGain <= -11.0 &&
+            active.musicGain <= -11.0 &&
+            active.trebleGain <= -11.0) {
           _player.setVolume(0.0);
         } else {
           _player.setVolume(1.0);

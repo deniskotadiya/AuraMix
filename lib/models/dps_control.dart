@@ -55,11 +55,12 @@ class DPSPreset {
   final double pitchShift;      // -12 to +12 semitones
   final double speed;           // 0.5 to 2.0x
   
-  // Stem & Instrument Level Isolators (-6.0 dB to +6.0 dB, 0.0 = neutral/flat)
+  // Stem & Instrument Level Isolators (-12.0 dB to +12.0 dB, 0.0 = neutral/flat)
   final double vocalGain;  // Vocals & Lyrics / Words Presence (1kHz - 4kHz)
   final double musicGain;  // Instruments, Guitars, Synths & Keys (250Hz - 1kHz)
   final double bassGain;   // Rhythm, Kicks, 808s & Bass (31Hz - 125Hz)
   final double trebleGain; // Air, Cymbals & Acoustic Ambience (8kHz - 16kHz)
+  final bool karaokeEnabled; // Center-channel vocal eliminator (Karaoke sing-along)
   
   final List<SongRecommendation> recommendedSongs;
   String? userReaction; // 'like', 'dislike', or null
@@ -90,6 +91,7 @@ class DPSPreset {
     this.musicGain = 0.0,
     this.bassGain = 0.0,
     this.trebleGain = 0.0,
+    this.karaokeEnabled = false,
     List<SongRecommendation>? recommendedSongs,
     this.userReaction,
   }) : createdAt = createdAt ?? DateTime.now(),
@@ -122,6 +124,7 @@ class DPSPreset {
     double? musicGain,
     double? bassGain,
     double? trebleGain,
+    bool? karaokeEnabled,
     List<SongRecommendation>? recommendedSongs,
     String? userReaction,
   }) {
@@ -151,6 +154,7 @@ class DPSPreset {
       musicGain: musicGain ?? this.musicGain,
       bassGain: bassGain ?? this.bassGain,
       trebleGain: trebleGain ?? this.trebleGain,
+      karaokeEnabled: karaokeEnabled ?? this.karaokeEnabled,
       recommendedSongs: recommendedSongs ?? List<SongRecommendation>.from(this.recommendedSongs),
       userReaction: userReaction ?? this.userReaction,
     );
@@ -182,6 +186,7 @@ class DPSPreset {
     'musicGain': musicGain,
     'bassGain': bassGain,
     'trebleGain': trebleGain,
+    'karaokeEnabled': karaokeEnabled,
     'recommendedSongs': recommendedSongs.map((s) => s.toJson()).toList(),
     'userReaction': userReaction,
   };
@@ -218,6 +223,7 @@ class DPSPreset {
       musicGain: (json['musicGain'] as num?)?.toDouble() ?? 0.0,
       bassGain: (json['bassGain'] as num?)?.toDouble() ?? 0.0,
       trebleGain: (json['trebleGain'] as num?)?.toDouble() ?? 0.0,
+      karaokeEnabled: json['karaokeEnabled'] as bool? ?? false,
       recommendedSongs: (json['recommendedSongs'] as List<dynamic>?)
               ?.map((e) => SongRecommendation.fromJson(e as Map<String, dynamic>))
               .toList() ??
