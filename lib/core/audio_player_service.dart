@@ -20,9 +20,10 @@ class AudioPlayerService extends ChangeNotifier {
 
   final AudioPlayer _player = AudioPlayer();
   final List<SongItem> _playlist = [];
+  ConcatenatingAudioSource? _playlistSource;
   int _currentIndex = 0;
   bool _isShuffle = false;
-  LoopMode _loopMode = LoopMode.off;
+  LoopMode _loopMode = LoopMode.all;
   bool _isScanning = false;
 
   // Real-time Visualizer amplitude stream simulation (for spectrum bars & VU meter)
@@ -91,6 +92,32 @@ class AudioPlayerService extends ChangeNotifier {
 
     // Restore previously imported or scanned user songs from local persistent storage
     await _loadSavedLocalSongs();
+
+    // Loop mode default all so next/previous are continuously accessible in notifications
+    _loopMode = LoopMode.all;
+    try {
+      await _player.setLoopMode(_loopMode);
+    } catch (_) {}
+
+    // Prepare playlist queue for Android MediaSession notifications (enables Next/Previous buttons)
+    if (_playlist.isNotEmpty) {
+      _playlistSource = _buildConcatenatingAudioSource();
+      try {
+        await _player.setAudioSource(_playlistSource!, initialIndex: 0, preload: false);
+      } catch (e) {
+        debugPrint('[AudioPlayerService] Error setting initial source: $e');
+      }
+    }
+
+    // Automatically sync active track when user taps Next/Previous from notification / lock screen / auto-advance
+    _player.currentIndexStream.listen((index) {
+      if (index != null && index >= 0 && index < _playlist.length) {
+        if (_currentIndex != index) {
+          _currentIndex = index;
+          notifyListeners();
+        }
+      }
+    });
 
     // Listen to player completions
     _player.playerStateStream.listen((state) {
@@ -185,6 +212,55 @@ class AudioPlayerService extends ChangeNotifier {
       await prefs.setStringList('auramix_saved_local_songs', encodedList);
     } catch (e) {
       debugPrint('[AudioPlayerService] Error saving songs: $e');
+    }
+  }
+
+  /// Builds a ConcatenatingAudioSource containing the entire playlist queue with MediaItem metadata.
+  /// This enables the system notification, lock screen, and Bluetooth devices to show Next & Previous controls.
+  ConcatenatingAudioSource _buildConcatenatingAudioSource() {
+    return ConcatenatingAudioSource(
+      useLazyPreparation: true,
+      children: _playlist.map((song) {
+        final mediaItem = MediaItem(
+          id: song.id,
+          album: song.album,
+          title: song.title,
+          artist: song.artist,
+          duration: song.duration,
+          artUri: Uri.parse('asset:///assets/images/auramix_icon.png'),
+        );
+        if (song.isAsset) {
+          return AudioSource.asset(song.path, tag: mediaItem);
+        } else {
+          return AudioSource.uri(Uri.file(song.path), tag: mediaItem);
+        }
+      }).toList(),
+    );
+  }
+
+  /// Syncs changes to the playlist queue directly into the running player
+  Future<void> _syncPlaylistToPlayer({int? targetIndex}) async {
+    if (_playlist.isEmpty) {
+      _playlistSource = null;
+      await _player.stop();
+      return;
+    }
+    final index = targetIndex ?? _currentIndex.clamp(0, _playlist.length - 1);
+    final wasPlaying = _player.playing;
+    final currentPos = _player.position;
+
+    _playlistSource = _buildConcatenatingAudioSource();
+    try {
+      await _player.setAudioSource(
+        _playlistSource!,
+        initialIndex: index,
+        initialPosition: wasPlaying ? currentPos : Duration.zero,
+      );
+      if (wasPlaying) {
+        await _player.play();
+      }
+    } catch (e) {
+      debugPrint('[AudioPlayerService] _syncPlaylistToPlayer error: $e');
     }
   }
 
@@ -295,6 +371,7 @@ class AudioPlayerService extends ChangeNotifier {
 
       if (addedCount > 0) {
         await _saveLocalSongs();
+        await _syncPlaylistToPlayer();
       }
     } finally {
       _isScanning = false;
@@ -387,6 +464,7 @@ class AudioPlayerService extends ChangeNotifier {
 
           if (addedCount > 0) {
             await _saveLocalSongs();
+            await _syncPlaylistToPlayer();
             notifyListeners();
           }
         }
@@ -406,11 +484,13 @@ class AudioPlayerService extends ChangeNotifier {
       _playlist.removeAt(idx);
       if (_playlist.isEmpty) {
         _currentIndex = 0;
+        _playlistSource = null;
         await _player.stop();
       } else {
         if (_currentIndex >= _playlist.length) {
           _currentIndex = _playlist.length - 1;
         }
+        await _syncPlaylistToPlayer(targetIndex: _currentIndex);
         if (wasCurrent) {
           await playSong(_playlist[_currentIndex]);
         }
@@ -428,6 +508,7 @@ class AudioPlayerService extends ChangeNotifier {
     }
     _currentIndex = 0;
     await _saveLocalSongs();
+    await _syncPlaylistToPlayer(targetIndex: 0);
     notifyListeners();
   }
 
@@ -450,32 +531,40 @@ class AudioPlayerService extends ChangeNotifier {
       if (_currentIndex == -1) _currentIndex = 0;
     }
 
+    if (_playlistSource != null && _playlistSource!.length == _playlist.length) {
+      try {
+        await _playlistSource!.move(oldIndex, newIndex);
+      } catch (e) {
+        debugPrint('[AudioPlayerService] playlist move error: $e');
+        await _syncPlaylistToPlayer(targetIndex: _currentIndex);
+      }
+    } else {
+      await _syncPlaylistToPlayer(targetIndex: _currentIndex);
+    }
+
     await _saveLocalSongs();
     notifyListeners();
   }
 
-  /// Plays a song with the active DPS preset effect applied in real-time
+  /// Plays a song with the active DPS preset effect applied in real-time.
+  /// Uses ConcatenatingAudioSource so that Android MediaSession automatically displays
+  /// Next and Previous buttons in the notification bar, lock screen, and Bluetooth devices.
   Future<void> playSong(SongItem song) async {
     final idx = _playlist.indexWhere((s) => s.id == song.id);
     if (idx != -1) _currentIndex = idx;
 
-    final mediaItem = MediaItem(
-      id: song.id,
-      album: song.album,
-      title: song.title,
-      artist: song.artist,
-      artUri: Uri.parse('asset:///assets/images/auramix_icon.png'),
-    );
-
     try {
-      if (song.isAsset) {
+      if (_playlistSource == null || _playlistSource!.length != _playlist.length) {
+        _playlistSource = _buildConcatenatingAudioSource();
         await _player.setAudioSource(
-          AudioSource.asset(song.path, tag: mediaItem),
+          _playlistSource!,
+          initialIndex: _currentIndex,
+          initialPosition: Duration.zero,
         );
       } else {
-        await _player.setAudioSource(
-          AudioSource.uri(Uri.file(song.path), tag: mediaItem),
-        );
+        if (_player.currentIndex != _currentIndex) {
+          await _player.seek(Duration.zero, index: _currentIndex);
+        }
       }
       await _player.play();
       if (_player.androidAudioSessionId != null) {
@@ -508,12 +597,23 @@ class AudioPlayerService extends ChangeNotifier {
 
   Future<void> skipToNext() async {
     if (_playlist.isEmpty) return;
-    if (_isShuffle) {
-      _currentIndex = Random().nextInt(_playlist.length);
-    } else {
+    try {
+      if (_player.hasNext) {
+        await _player.seekToNext();
+        await _player.play();
+      } else {
+        _currentIndex = (_currentIndex + 1) % _playlist.length;
+        if (_playlistSource != null && _playlistSource!.length == _playlist.length) {
+          await _player.seek(Duration.zero, index: _currentIndex);
+          await _player.play();
+        } else {
+          await playSong(_playlist[_currentIndex]);
+        }
+      }
+    } catch (e) {
       _currentIndex = (_currentIndex + 1) % _playlist.length;
+      await playSong(_playlist[_currentIndex]);
     }
-    await playSong(_playlist[_currentIndex]);
   }
 
   Future<void> skipToPrevious() async {
@@ -522,12 +622,28 @@ class AudioPlayerService extends ChangeNotifier {
       await _player.seek(Duration.zero);
       return;
     }
-    _currentIndex = (_currentIndex - 1 + _playlist.length) % _playlist.length;
-    await playSong(_playlist[_currentIndex]);
+    try {
+      if (_player.hasPrevious) {
+        await _player.seekToPrevious();
+        await _player.play();
+      } else {
+        _currentIndex = (_currentIndex - 1 + _playlist.length) % _playlist.length;
+        if (_playlistSource != null && _playlistSource!.length == _playlist.length) {
+          await _player.seek(Duration.zero, index: _currentIndex);
+          await _player.play();
+        } else {
+          await playSong(_playlist[_currentIndex]);
+        }
+      }
+    } catch (e) {
+      _currentIndex = (_currentIndex - 1 + _playlist.length) % _playlist.length;
+      await playSong(_playlist[_currentIndex]);
+    }
   }
 
   void toggleShuffle() {
     _isShuffle = !_isShuffle;
+    _player.setShuffleModeEnabled(_isShuffle);
     notifyListeners();
   }
 
@@ -537,7 +653,7 @@ class AudioPlayerService extends ChangeNotifier {
     } else if (_loopMode == LoopMode.all) {
       _loopMode = LoopMode.one;
     } else {
-      _loopMode = LoopMode.off;
+      _loopMode = LoopMode.all;
     }
     _player.setLoopMode(_loopMode);
     notifyListeners();
