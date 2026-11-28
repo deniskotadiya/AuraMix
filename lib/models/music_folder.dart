@@ -49,6 +49,9 @@ class MusicFolder {
 
     final List<MusicFolder> list = [];
     folderMap.forEach((path, songsInFolder) {
+      // Sort songs within each folder alphabetically by song title A-Z
+      songsInFolder.sort((a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
+
       list.add(MusicFolder(
         name: folderNames[path] ?? 'Music Folder',
         path: path,

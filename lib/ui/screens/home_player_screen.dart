@@ -29,6 +29,7 @@ class _HomePlayerScreenState extends State<HomePlayerScreen> with SingleTickerPr
   String _searchQuery = '';
   int _libraryFilter = 0; // 0 = All, 1 = Device Audio, 2 = Bundled Sounds
   int _librarySubTab = 0; // 0 = All Tracks, 1 = Folders
+  int _sortMode = 0; // 0 = Alphabetical A-Z (Default), 1 = Alphabetical Z-A, 2 = Artist A-Z, 3 = Custom
   String? _selectedFolderPath; // Selected folder path for drilldown view
 
   @override
@@ -738,6 +739,22 @@ class _HomePlayerScreenState extends State<HomePlayerScreen> with SingleTickerPr
       }).toList();
     }
 
+    // Apply Alphabetical / Selected Sorting (default: Alphabetical A-Z)
+    switch (_sortMode) {
+      case 0: // Alphabetical A-Z
+        filtered.sort((a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
+        break;
+      case 1: // Alphabetical Z-A
+        filtered.sort((a, b) => b.title.toLowerCase().compareTo(a.title.toLowerCase()));
+        break;
+      case 2: // Artist A-Z
+        filtered.sort((a, b) => a.artist.toLowerCase().compareTo(b.artist.toLowerCase()));
+        break;
+      case 3: // Custom / Original Playlist Order
+      default:
+        break;
+    }
+
     return Column(
       children: [
         // Action Bar: Scan Device, Pick Files, Add Folder (Horizontally Scrollable)
@@ -934,24 +951,34 @@ class _HomePlayerScreenState extends State<HomePlayerScreen> with SingleTickerPr
             ),
           ),
 
-          // Filter Chips (All, Device Audio, Bundled) - Scrollable
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            physics: const BouncingScrollPhysics(),
+          // Filter Chips (All, Device Audio, Bundled) + Sort Selector
+          Padding(
             padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 4),
             child: Row(
               children: [
-                _buildFilterChip('All (${allSongs.length})', 0),
-                const SizedBox(width: 8),
-                _buildFilterChip(
-                  'Device Tracks (${AudioPlayerService.instance.localDeviceSongs.length})',
-                  1,
+                Expanded(
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    physics: const BouncingScrollPhysics(),
+                    child: Row(
+                      children: [
+                        _buildFilterChip('All (${allSongs.length})', 0),
+                        const SizedBox(width: 8),
+                        _buildFilterChip(
+                          'Device Tracks (${AudioPlayerService.instance.localDeviceSongs.length})',
+                          1,
+                        ),
+                        const SizedBox(width: 8),
+                        _buildFilterChip(
+                          'Bundled (${AudioPlayerService.instance.bundledSounds.length})',
+                          2,
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
                 const SizedBox(width: 8),
-                _buildFilterChip(
-                  'Bundled (${AudioPlayerService.instance.bundledSounds.length})',
-                  2,
-                ),
+                _buildSortMenuButton(),
               ],
             ),
           ),
@@ -979,7 +1006,7 @@ class _HomePlayerScreenState extends State<HomePlayerScreen> with SingleTickerPr
                       ],
                     ),
                   )
-                : (_searchQuery.isEmpty && _libraryFilter == 0)
+                : (_sortMode == 3 && _searchQuery.isEmpty && _libraryFilter == 0)
                     ? ReorderableListView.builder(
                         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                         itemCount: filtered.length,
@@ -1197,12 +1224,26 @@ class _HomePlayerScreenState extends State<HomePlayerScreen> with SingleTickerPr
       orElse: () => folders.first,
     );
 
-    var songsInFolder = folder.songs;
+    var songsInFolder = List<SongItem>.from(folder.songs);
     if (_searchQuery.trim().isNotEmpty) {
       final q = _searchQuery.toLowerCase();
       songsInFolder = songsInFolder.where((s) {
         return s.title.toLowerCase().contains(q) || s.artist.toLowerCase().contains(q);
       }).toList();
+    }
+
+    // Ensure folder songs are sorted alphabetically A-Z
+    switch (_sortMode) {
+      case 1:
+        songsInFolder.sort((a, b) => b.title.toLowerCase().compareTo(a.title.toLowerCase()));
+        break;
+      case 2:
+        songsInFolder.sort((a, b) => a.artist.toLowerCase().compareTo(b.artist.toLowerCase()));
+        break;
+      case 0:
+      default:
+        songsInFolder.sort((a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
+        break;
     }
 
     return Column(
@@ -1518,6 +1559,110 @@ class _HomePlayerScreenState extends State<HomePlayerScreen> with SingleTickerPr
           }
         },
       ),
+    );
+  }
+
+  Widget _buildSortMenuButton() {
+    String sortLabel;
+    IconData sortIcon;
+    switch (_sortMode) {
+      case 0:
+        sortLabel = 'A-Z';
+        sortIcon = Icons.sort_by_alpha_rounded;
+        break;
+      case 1:
+        sortLabel = 'Z-A';
+        sortIcon = Icons.sort_by_alpha_rounded;
+        break;
+      case 2:
+        sortLabel = 'Artist';
+        sortIcon = Icons.person_outline_rounded;
+        break;
+      default:
+        sortLabel = 'Custom';
+        sortIcon = Icons.reorder_rounded;
+        break;
+    }
+
+    return PopupMenuButton<int>(
+      initialValue: _sortMode,
+      tooltip: 'Sort songs',
+      onSelected: (mode) => setState(() => _sortMode = mode),
+      color: AppTheme.surfaceElevated,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: const BorderSide(color: Colors.white12),
+      ),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+        decoration: BoxDecoration(
+          color: AppTheme.surfaceDark,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: _sortMode == 0 ? AppTheme.neonCyan.withAlpha(160) : Colors.white24,
+            width: 1,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(sortIcon, size: 14, color: AppTheme.neonCyan),
+            const SizedBox(width: 4),
+            Text(
+              sortLabel,
+              style: const TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(width: 2),
+            const Icon(Icons.arrow_drop_down, size: 16, color: Colors.white60),
+          ],
+        ),
+      ),
+      itemBuilder: (context) => [
+        const PopupMenuItem(
+          value: 0,
+          child: Row(
+            children: [
+              Icon(Icons.sort_by_alpha_rounded, color: AppTheme.neonCyan, size: 16),
+              SizedBox(width: 8),
+              Text('Alphabetical (A-Z) [Default]', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+            ],
+          ),
+        ),
+        const PopupMenuItem(
+          value: 1,
+          child: Row(
+            children: [
+              Icon(Icons.sort_by_alpha_rounded, color: Colors.white70, size: 16),
+              SizedBox(width: 8),
+              Text('Alphabetical (Z-A)', style: TextStyle(fontSize: 12)),
+            ],
+          ),
+        ),
+        const PopupMenuItem(
+          value: 2,
+          child: Row(
+            children: [
+              Icon(Icons.person_outline_rounded, color: Colors.white70, size: 16),
+              SizedBox(width: 8),
+              Text('Artist (A-Z)', style: TextStyle(fontSize: 12)),
+            ],
+          ),
+        ),
+        const PopupMenuItem(
+          value: 3,
+          child: Row(
+            children: [
+              Icon(Icons.reorder_rounded, color: Colors.white70, size: 16),
+              SizedBox(width: 8),
+              Text('Custom / Drag & Drop', style: TextStyle(fontSize: 12)),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
