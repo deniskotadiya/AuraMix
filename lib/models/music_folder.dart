@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'song_item.dart';
 
 class MusicFolder {
@@ -23,25 +22,8 @@ class MusicFolder {
     final Map<String, String> folderNames = {};
 
     for (final song in songs) {
-      String folderPath;
-      String folderName;
-
-      if (song.isAsset) {
-        folderPath = 'assets/audio';
-        folderName = 'AuraMix SoundLab (Bundled)';
-      } else {
-        try {
-          final parent = File(song.path).parent;
-          folderPath = parent.path;
-          folderName = parent.path.split(Platform.pathSeparator).last;
-          if (folderName.isEmpty) {
-            folderName = song.album.isNotEmpty ? song.album : 'Storage';
-          }
-        } catch (_) {
-          folderPath = song.album.isNotEmpty ? song.album : 'Device Audio';
-          folderName = folderPath;
-        }
-      }
+      final folderPath = song.folderPath;
+      final folderName = song.folderName;
 
       folderMap.putIfAbsent(folderPath, () => []).add(song);
       folderNames[folderPath] = folderName;

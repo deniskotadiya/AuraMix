@@ -32,6 +32,70 @@ class _HomePlayerScreenState extends State<HomePlayerScreen> with SingleTickerPr
   int _sortMode = 0; // 0 = Alphabetical A-Z (Default), 1 = Alphabetical Z-A, 2 = Artist A-Z, 3 = Custom
   String? _selectedFolderPath; // Selected folder path for drilldown view
 
+  // Caching for ultra-fast, 60fps stutter-free library scrolling
+  List<SongItem>? _cachedPlaylistRef;
+  int _lastFilter = -1;
+  int _lastSortMode = -1;
+  String _lastSearchQuery = '';
+  List<SongItem> _cachedFilteredSongs = [];
+
+  List<SongItem>? _cachedFoldersPlaylistRef;
+  List<MusicFolder> _cachedFolders = [];
+
+  List<SongItem> _getFilteredSongs(List<SongItem> allSongs) {
+    if (identical(_cachedPlaylistRef, allSongs) &&
+        _lastFilter == _libraryFilter &&
+        _lastSortMode == _sortMode &&
+        _lastSearchQuery == _searchQuery) {
+      return _cachedFilteredSongs;
+    }
+
+    _cachedPlaylistRef = allSongs;
+    _lastFilter = _libraryFilter;
+    _lastSortMode = _sortMode;
+    _lastSearchQuery = _searchQuery;
+
+    var list = allSongs.where((s) {
+      if (_libraryFilter == 1) return !s.isAsset;
+      if (_libraryFilter == 2) return s.isAsset;
+      return true;
+    }).toList();
+
+    if (_searchQuery.trim().isNotEmpty) {
+      final q = _searchQuery.toLowerCase();
+      list = list.where((s) {
+        return s.title.toLowerCase().contains(q) || s.artist.toLowerCase().contains(q);
+      }).toList();
+    }
+
+    switch (_sortMode) {
+      case 0:
+        list.sort((a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
+        break;
+      case 1:
+        list.sort((a, b) => b.title.toLowerCase().compareTo(a.title.toLowerCase()));
+        break;
+      case 2:
+        list.sort((a, b) => a.artist.toLowerCase().compareTo(b.artist.toLowerCase()));
+        break;
+      case 3:
+      default:
+        break;
+    }
+
+    _cachedFilteredSongs = list;
+    return _cachedFilteredSongs;
+  }
+
+  List<MusicFolder> _getFolders(List<SongItem> allSongs) {
+    if (identical(_cachedFoldersPlaylistRef, allSongs) && _cachedFolders.isNotEmpty) {
+      return _cachedFolders;
+    }
+    _cachedFoldersPlaylistRef = allSongs;
+    _cachedFolders = MusicFolder.extractFolders(allSongs);
+    return _cachedFolders;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -722,38 +786,8 @@ class _HomePlayerScreenState extends State<HomePlayerScreen> with SingleTickerPr
   Widget _buildLocalLibraryView(SongItem? currentSong, DPSEngine dps) {
     final allSongs = AudioPlayerService.instance.playlist;
     final isScanning = AudioPlayerService.instance.isScanning;
-    final folders = MusicFolder.extractFolders(allSongs);
-
-    // Apply Filter (All, Device, Bundled) for tracks subtab
-    var filtered = allSongs.where((s) {
-      if (_libraryFilter == 1) return !s.isAsset;
-      if (_libraryFilter == 2) return s.isAsset;
-      return true;
-    }).toList();
-
-    // Apply Search Query for tracks subtab
-    if (_searchQuery.trim().isNotEmpty) {
-      final q = _searchQuery.toLowerCase();
-      filtered = filtered.where((s) {
-        return s.title.toLowerCase().contains(q) || s.artist.toLowerCase().contains(q);
-      }).toList();
-    }
-
-    // Apply Alphabetical / Selected Sorting (default: Alphabetical A-Z)
-    switch (_sortMode) {
-      case 0: // Alphabetical A-Z
-        filtered.sort((a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
-        break;
-      case 1: // Alphabetical Z-A
-        filtered.sort((a, b) => b.title.toLowerCase().compareTo(a.title.toLowerCase()));
-        break;
-      case 2: // Artist A-Z
-        filtered.sort((a, b) => a.artist.toLowerCase().compareTo(b.artist.toLowerCase()));
-        break;
-      case 3: // Custom / Original Playlist Order
-      default:
-        break;
-    }
+    final folders = _getFolders(allSongs);
+    final filtered = _getFilteredSongs(allSongs);
 
     return Column(
       children: [
@@ -1010,6 +1044,9 @@ class _HomePlayerScreenState extends State<HomePlayerScreen> with SingleTickerPr
                     ? ReorderableListView.builder(
                         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                         itemCount: filtered.length,
+                        itemExtent: 70.0,
+                        // ignore: deprecated_member_use
+                        cacheExtent: 600.0,
                         // ignore: deprecated_member_use
                         onReorder: (oldIndex, newIndex) {
                           AudioPlayerService.instance.reorderPlaylist(oldIndex, newIndex);
@@ -1019,6 +1056,9 @@ class _HomePlayerScreenState extends State<HomePlayerScreen> with SingleTickerPr
                     : ListView.builder(
                         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                         itemCount: filtered.length,
+                        itemExtent: 70.0,
+                        // ignore: deprecated_member_use
+                        cacheExtent: 600.0,
                         itemBuilder: (ctx, idx) => _buildSongListItem(filtered[idx], idx, currentSong, canReorder: false),
                       ),
           ),
@@ -1107,6 +1147,8 @@ class _HomePlayerScreenState extends State<HomePlayerScreen> with SingleTickerPr
               : ListView.builder(
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                   itemCount: displayFolders.length,
+                  // ignore: deprecated_member_use
+                  cacheExtent: 600.0,
                   itemBuilder: (ctx, idx) {
                     final folder = displayFolders[idx];
                     final isFolderActive = currentSong != null && folder.songs.any((s) => s.id == currentSong.id);
@@ -1357,6 +1399,9 @@ class _HomePlayerScreenState extends State<HomePlayerScreen> with SingleTickerPr
               : ListView.builder(
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
                   itemCount: songsInFolder.length,
+                  itemExtent: 70.0,
+                  // ignore: deprecated_member_use
+                  cacheExtent: 600.0,
                   itemBuilder: (ctx, idx) => _buildSongListItem(
                     songsInFolder[idx],
                     idx,
@@ -1375,6 +1420,7 @@ class _HomePlayerScreenState extends State<HomePlayerScreen> with SingleTickerPr
 
     return Container(
       key: ValueKey(song.id),
+      height: 64,
       margin: const EdgeInsets.only(bottom: 6),
       decoration: BoxDecoration(
         color: isCurrent ? AppTheme.neonCyan.withAlpha(20) : AppTheme.surfaceDark,
@@ -1385,7 +1431,8 @@ class _HomePlayerScreenState extends State<HomePlayerScreen> with SingleTickerPr
         ),
       ),
       child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+        dense: true,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
         leading: GestureDetector(
           onTap: () {
             if (isCurrent) {
