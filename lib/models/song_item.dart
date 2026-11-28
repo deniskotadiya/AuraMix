@@ -40,4 +40,28 @@ class SongItem {
     isAsset: json['isAsset'] as bool? ?? false,
     albumArtUri: json['albumArtUri'] as String?,
   );
+
+  String get folderPath {
+    if (isAsset) return 'assets/audio';
+    try {
+      final normalized = path.replaceAll('\\', '/');
+      final idx = normalized.lastIndexOf('/');
+      if (idx > 0) return normalized.substring(0, idx);
+    } catch (_) {}
+    return album.isNotEmpty ? album : 'Device Audio';
+  }
+
+  String get folderName {
+    if (isAsset) return 'AuraMix SoundLab (Bundled)';
+    try {
+      final fPath = folderPath;
+      final idx = fPath.lastIndexOf('/');
+      if (idx >= 0 && idx < fPath.length - 1) {
+        final name = fPath.substring(idx + 1);
+        if (name.isNotEmpty) return name;
+      }
+      return fPath;
+    } catch (_) {}
+    return album.isNotEmpty ? album : 'Device Audio';
+  }
 }

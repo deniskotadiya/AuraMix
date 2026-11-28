@@ -5,6 +5,7 @@ import '../../core/app_theme.dart';
 import '../../core/audio_player_service.dart';
 import '../../core/dps_engine.dart';
 import '../../models/song_item.dart';
+import '../../models/music_folder.dart';
 import '../widgets/animated_visualizer.dart';
 import '../widgets/banner_ad_widget.dart';
 import '../widgets/acoustic_profile_selector.dart';
@@ -27,6 +28,8 @@ class _HomePlayerScreenState extends State<HomePlayerScreen> with SingleTickerPr
   int _viewMode = 0; // 0 = Cockpit Player Deck, 1 = Local Music Library
   String _searchQuery = '';
   int _libraryFilter = 0; // 0 = All, 1 = Device Audio, 2 = Bundled Sounds
+  int _librarySubTab = 0; // 0 = All Tracks, 1 = Folders
+  String? _selectedFolderPath; // Selected folder path for drilldown view
 
   @override
   void initState() {
@@ -714,19 +717,20 @@ class _HomePlayerScreenState extends State<HomePlayerScreen> with SingleTickerPr
     );
   }
 
-  /// View 1: Local Music Library with Search, Device Scanner, and Tune With DPS
+  /// View 1: Local Music Library with Search, Device Scanner, and Folder-wise browsing
   Widget _buildLocalLibraryView(SongItem? currentSong, DPSEngine dps) {
     final allSongs = AudioPlayerService.instance.playlist;
     final isScanning = AudioPlayerService.instance.isScanning;
+    final folders = MusicFolder.extractFolders(allSongs);
 
-    // Apply Filter (All, Device, Bundled)
+    // Apply Filter (All, Device, Bundled) for tracks subtab
     var filtered = allSongs.where((s) {
       if (_libraryFilter == 1) return !s.isAsset;
       if (_libraryFilter == 2) return s.isAsset;
       return true;
     }).toList();
 
-    // Apply Search Query
+    // Apply Search Query for tracks subtab
     if (_searchQuery.trim().isNotEmpty) {
       final q = _searchQuery.toLowerCase();
       filtered = filtered.where((s) {
@@ -789,7 +793,7 @@ class _HomePlayerScreenState extends State<HomePlayerScreen> with SingleTickerPr
                   _showScanResultSnackbar(count, 'Folder Import');
                 },
                 icon: const Icon(Icons.folder_open_rounded, size: 15),
-                label: const Text('Folder', style: TextStyle(fontSize: 11)),
+                label: const Text('Folder Import', style: TextStyle(fontSize: 11)),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: Colors.white,
                   side: const BorderSide(color: Colors.white24),
@@ -800,16 +804,233 @@ class _HomePlayerScreenState extends State<HomePlayerScreen> with SingleTickerPr
           ),
         ),
 
-        // Search Field
+        // Sub-Tab Switcher: [ All Tracks (N) ]  [ Folders (M) ]
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 6),
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 4),
+          child: Container(
+            padding: const EdgeInsets.all(3),
+            decoration: BoxDecoration(
+              color: AppTheme.surfaceDark,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.white12),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () => setState(() {
+                      _librarySubTab = 0;
+                      _selectedFolderPath = null;
+                    }),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 7),
+                      decoration: BoxDecoration(
+                        color: _librarySubTab == 0 ? AppTheme.neonCyan.withAlpha(45) : Colors.transparent,
+                        borderRadius: BorderRadius.circular(9),
+                        border: Border.all(
+                          color: _librarySubTab == 0 ? AppTheme.neonCyan.withAlpha(140) : Colors.transparent,
+                        ),
+                      ),
+                      alignment: Alignment.center,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.queue_music_rounded,
+                            size: 15,
+                            color: _librarySubTab == 0 ? AppTheme.neonCyan : Colors.white60,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            'All Tracks (${allSongs.length})',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: _librarySubTab == 0 ? FontWeight.bold : FontWeight.w500,
+                              color: _librarySubTab == 0 ? Colors.white : Colors.white60,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () => setState(() {
+                      _librarySubTab = 1;
+                    }),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 7),
+                      decoration: BoxDecoration(
+                        color: _librarySubTab == 1 ? AppTheme.neonCyan.withAlpha(45) : Colors.transparent,
+                        borderRadius: BorderRadius.circular(9),
+                        border: Border.all(
+                          color: _librarySubTab == 1 ? AppTheme.neonCyan.withAlpha(140) : Colors.transparent,
+                        ),
+                      ),
+                      alignment: Alignment.center,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.folder_special_rounded,
+                            size: 15,
+                            color: _librarySubTab == 1 ? AppTheme.neonCyan : Colors.white60,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Folders (${folders.length})',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: _librarySubTab == 1 ? FontWeight.bold : FontWeight.w500,
+                              color: _librarySubTab == 1 ? Colors.white : Colors.white60,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+
+        // SubTab 0: All Tracks View
+        if (_librarySubTab == 0) ...[
+          // Search Field
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 4),
+            child: TextField(
+              onChanged: (val) => setState(() => _searchQuery = val),
+              style: const TextStyle(fontSize: 13, color: Colors.white),
+              decoration: InputDecoration(
+                hintText: 'Search songs by title or artist...',
+                hintStyle: const TextStyle(fontSize: 12, color: Colors.white38),
+                prefixIcon: const Icon(Icons.search_rounded, size: 18, color: AppTheme.neonCyan),
+                suffixIcon: _searchQuery.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear, size: 16, color: Colors.white54),
+                        onPressed: () => setState(() => _searchQuery = ''),
+                      )
+                    : null,
+                contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 14),
+                filled: true,
+                fillColor: AppTheme.surfaceDark,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: Colors.white12),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: Colors.white12),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: AppTheme.neonCyan),
+                ),
+              ),
+            ),
+          ),
+
+          // Filter Chips (All, Device Audio, Bundled) - Scrollable
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            physics: const BouncingScrollPhysics(),
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 4),
+            child: Row(
+              children: [
+                _buildFilterChip('All (${allSongs.length})', 0),
+                const SizedBox(width: 8),
+                _buildFilterChip(
+                  'Device Tracks (${AudioPlayerService.instance.localDeviceSongs.length})',
+                  1,
+                ),
+                const SizedBox(width: 8),
+                _buildFilterChip(
+                  'Bundled (${AudioPlayerService.instance.bundledSounds.length})',
+                  2,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 4),
+
+          // Songs List
+          Expanded(
+            child: filtered.isEmpty
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.music_off_rounded, size: 48, color: Colors.white.withAlpha(40)),
+                        const SizedBox(height: 12),
+                        Text(
+                          _searchQuery.isNotEmpty ? 'No tracks matching "$_searchQuery"' : 'No audio files found',
+                          style: const TextStyle(color: Colors.white54, fontSize: 14),
+                        ),
+                        const SizedBox(height: 14),
+                        ElevatedButton.icon(
+                          onPressed: () => AudioPlayerService.instance.pickAudioFiles(),
+                          icon: const Icon(Icons.add, size: 16),
+                          label: const Text('Add Songs Now'),
+                        ),
+                      ],
+                    ),
+                  )
+                : (_searchQuery.isEmpty && _libraryFilter == 0)
+                    ? ReorderableListView.builder(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                        itemCount: filtered.length,
+                        // ignore: deprecated_member_use
+                        onReorder: (oldIndex, newIndex) {
+                          AudioPlayerService.instance.reorderPlaylist(oldIndex, newIndex);
+                        },
+                        itemBuilder: (ctx, idx) => _buildSongListItem(filtered[idx], idx, currentSong),
+                      )
+                    : ListView.builder(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                        itemCount: filtered.length,
+                        itemBuilder: (ctx, idx) => _buildSongListItem(filtered[idx], idx, currentSong, canReorder: false),
+                      ),
+          ),
+        ] else ...[
+          // SubTab 1: Folders View (Directory list or Folder drilldown)
+          Expanded(
+            child: _selectedFolderPath != null
+                ? _buildFolderDetailView(folders, currentSong)
+                : _buildFolderListView(folders, currentSong),
+          ),
+        ],
+      ],
+    );
+  }
+
+  /// Folder List View: Shows folders extracted from device storage & bundled audio
+  Widget _buildFolderListView(List<MusicFolder> folders, SongItem? currentSong) {
+    var displayFolders = folders;
+    if (_searchQuery.trim().isNotEmpty) {
+      final q = _searchQuery.toLowerCase();
+      displayFolders = folders.where((f) {
+        final matchesFolder = f.name.toLowerCase().contains(q) || f.path.toLowerCase().contains(q);
+        final matchesSong = f.songs.any((s) => s.title.toLowerCase().contains(q) || s.artist.toLowerCase().contains(q));
+        return matchesFolder || matchesSong;
+      }).toList();
+    }
+
+    return Column(
+      children: [
+        // Folder Search
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 4),
           child: TextField(
             onChanged: (val) => setState(() => _searchQuery = val),
             style: const TextStyle(fontSize: 13, color: Colors.white),
             decoration: InputDecoration(
-              hintText: 'Search songs by title or artist...',
+              hintText: 'Search folders or contained tracks...',
               hintStyle: const TextStyle(fontSize: 12, color: Colors.white38),
-              prefixIcon: const Icon(Icons.search_rounded, size: 18, color: AppTheme.neonCyan),
+              prefixIcon: const Icon(Icons.folder_open_rounded, size: 18, color: AppTheme.neonCyan),
               suffixIcon: _searchQuery.isNotEmpty
                   ? IconButton(
                       icon: const Icon(Icons.clear, size: 16, color: Colors.white54),
@@ -835,66 +1056,273 @@ class _HomePlayerScreenState extends State<HomePlayerScreen> with SingleTickerPr
           ),
         ),
 
-        // Filter Chips (All, Device Audio, Bundled) - Scrollable
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          physics: const BouncingScrollPhysics(),
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 4),
-          child: Row(
-            children: [
-              _buildFilterChip('All (${allSongs.length})', 0),
-              const SizedBox(width: 8),
-              _buildFilterChip(
-                'Device Tracks (${AudioPlayerService.instance.localDeviceSongs.length})',
-                1,
-              ),
-              const SizedBox(width: 8),
-              _buildFilterChip(
-                'Bundled (${AudioPlayerService.instance.bundledSounds.length})',
-                2,
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 4),
-
-        // Songs List
         Expanded(
-          child: filtered.isEmpty
+          child: displayFolders.isEmpty
               ? Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.music_off_rounded, size: 48, color: Colors.white.withAlpha(40)),
+                      Icon(Icons.folder_off_rounded, size: 48, color: Colors.white.withAlpha(40)),
                       const SizedBox(height: 12),
                       Text(
-                        _searchQuery.isNotEmpty ? 'No tracks matching "$_searchQuery"' : 'No audio files found',
+                        _searchQuery.isNotEmpty ? 'No folders matching "$_searchQuery"' : 'No music folders found',
                         style: const TextStyle(color: Colors.white54, fontSize: 14),
                       ),
                       const SizedBox(height: 14),
                       ElevatedButton.icon(
-                        onPressed: () => AudioPlayerService.instance.pickAudioFiles(),
-                        icon: const Icon(Icons.add, size: 16),
-                        label: const Text('Add Songs Now'),
+                        onPressed: () => AudioPlayerService.instance.pickMusicFolder(),
+                        icon: const Icon(Icons.folder_open_rounded, size: 16),
+                        label: const Text('Add Music Folder'),
                       ),
                     ],
                   ),
                 )
-              : (_searchQuery.isEmpty && _libraryFilter == 0)
-                  ? ReorderableListView.builder(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                      itemCount: filtered.length,
-                      // ignore: deprecated_member_use
-                      onReorder: (oldIndex, newIndex) {
-                        AudioPlayerService.instance.reorderPlaylist(oldIndex, newIndex);
-                      },
-                      itemBuilder: (ctx, idx) => _buildSongListItem(filtered[idx], idx, currentSong),
-                    )
-                  : ListView.builder(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                      itemCount: filtered.length,
-                      itemBuilder: (ctx, idx) => _buildSongListItem(filtered[idx], idx, currentSong, canReorder: false),
+              : ListView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                  itemCount: displayFolders.length,
+                  itemBuilder: (ctx, idx) {
+                    final folder = displayFolders[idx];
+                    final isFolderActive = currentSong != null && folder.songs.any((s) => s.id == currentSong.id);
+                    final isPlayingInFolder = isFolderActive && AudioPlayerService.instance.isPlaying;
+
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      decoration: BoxDecoration(
+                        color: isFolderActive ? AppTheme.neonCyan.withAlpha(20) : AppTheme.surfaceDark,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: isFolderActive ? AppTheme.neonCyan.withAlpha(90) : Colors.white.withAlpha(14),
+                          width: isFolderActive ? 1.2 : 0.8,
+                        ),
+                      ),
+                      child: ListTile(
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                        onTap: () {
+                          setState(() {
+                            _selectedFolderPath = folder.path;
+                          });
+                        },
+                        leading: Container(
+                          width: 44,
+                          height: 44,
+                          decoration: BoxDecoration(
+                            gradient: isFolderActive ? AppTheme.cyanPurpleGradient : null,
+                            color: isFolderActive ? null : AppTheme.surfaceElevated,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Icon(
+                            folder.isAsset ? Icons.folder_special_rounded : Icons.folder_rounded,
+                            color: isFolderActive ? Colors.white : AppTheme.neonCyan,
+                            size: 26,
+                          ),
+                        ),
+                        title: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                folder.name,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: isFolderActive ? FontWeight.bold : FontWeight.w600,
+                                  color: isFolderActive ? AppTheme.neonCyan : Colors.white,
+                                ),
+                              ),
+                            ),
+                            if (isFolderActive)
+                              Container(
+                                margin: const EdgeInsets.only(left: 6),
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: AppTheme.neonCyan.withAlpha(35),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  isPlayingInFolder ? 'PLAYING' : 'ACTIVE',
+                                  style: const TextStyle(
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppTheme.neonCyan,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const SizedBox(height: 2),
+                            Text(
+                              '${folder.songs.length} song${folder.songs.length == 1 ? "" : "s"} • ${_formatDuration(folder.totalDuration)}',
+                              style: const TextStyle(fontSize: 11, color: Colors.white70),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              folder.path,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(fontSize: 10, color: Colors.white38),
+                            ),
+                          ],
+                        ),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.play_circle_fill_rounded, color: AppTheme.neonCyan, size: 26),
+                              tooltip: 'Play folder',
+                              onPressed: () {
+                                if (folder.songs.isNotEmpty) {
+                                  AudioPlayerService.instance.playSong(folder.songs.first);
+                                }
+                              },
+                            ),
+                            const Icon(Icons.chevron_right_rounded, color: Colors.white38, size: 20),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+        ),
+      ],
+    );
+  }
+
+  /// Folder Detail View: Displays songs within the selected folder with Play All and Shuffle actions
+  Widget _buildFolderDetailView(List<MusicFolder> folders, SongItem? currentSong) {
+    final folder = folders.firstWhere(
+      (f) => f.path == _selectedFolderPath,
+      orElse: () => folders.first,
+    );
+
+    var songsInFolder = folder.songs;
+    if (_searchQuery.trim().isNotEmpty) {
+      final q = _searchQuery.toLowerCase();
+      songsInFolder = songsInFolder.where((s) {
+        return s.title.toLowerCase().contains(q) || s.artist.toLowerCase().contains(q);
+      }).toList();
+    }
+
+    return Column(
+      children: [
+        // Folder Header Navigation & Actions
+        Container(
+          margin: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: AppTheme.surfaceDark,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: Colors.white12),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  IconButton(
+                    onPressed: () => setState(() => _selectedFolderPath = null),
+                    icon: const Icon(Icons.arrow_back_rounded, color: AppTheme.neonCyan, size: 22),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                    tooltip: 'Back to all folders',
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          folder.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white),
+                        ),
+                        Text(
+                          '${folder.songs.length} song${folder.songs.length == 1 ? "" : "s"} • ${_formatDuration(folder.totalDuration)}',
+                          style: const TextStyle(fontSize: 11, color: Colors.white54),
+                        ),
+                      ],
                     ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Padding(
+                padding: const EdgeInsets.only(left: 40),
+                child: Text(
+                  folder.path,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 10, color: Colors.white30),
+                ),
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: folder.songs.isEmpty
+                          ? null
+                          : () {
+                              AudioPlayerService.instance.playSong(folder.songs.first);
+                            },
+                      icon: const Icon(Icons.play_arrow_rounded, size: 16),
+                      label: const Text('Play All', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.neonCyan.withAlpha(45),
+                        foregroundColor: AppTheme.neonCyan,
+                        side: BorderSide(color: AppTheme.neonCyan.withAlpha(120)),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: folder.songs.isEmpty
+                          ? null
+                          : () {
+                              final shuffled = List<SongItem>.from(folder.songs)..shuffle();
+                              AudioPlayerService.instance.playSong(shuffled.first);
+                            },
+                      icon: const Icon(Icons.shuffle_rounded, size: 16),
+                      label: const Text('Shuffle', style: TextStyle(fontSize: 11)),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.white,
+                        side: const BorderSide(color: Colors.white24),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+
+        // Songs inside folder list
+        Expanded(
+          child: songsInFolder.isEmpty
+              ? Center(
+                  child: Text(
+                    _searchQuery.isNotEmpty ? 'No tracks matching "$_searchQuery"' : 'This folder is empty',
+                    style: const TextStyle(color: Colors.white54, fontSize: 13),
+                  ),
+                )
+              : ListView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                  itemCount: songsInFolder.length,
+                  itemBuilder: (ctx, idx) => _buildSongListItem(
+                    songsInFolder[idx],
+                    idx,
+                    currentSong,
+                    canReorder: false,
+                  ),
+                ),
         ),
       ],
     );

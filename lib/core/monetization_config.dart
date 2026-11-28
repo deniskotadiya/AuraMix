@@ -13,7 +13,7 @@ class MonetizationConfig {
   /// - VIP Pro status enabled everywhere in the app
   ///
   /// Set to `false` for standard store monetization with IAP and AdMob ads.
-  static const bool isPremium = false;
+  static const bool isPremium = true;
 
   // Toggle to switch between local persistent storage mode and Firebase production mode
   static const bool firebaseEnabled = true;
